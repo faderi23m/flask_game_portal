@@ -1,0 +1,29 @@
+{% extends "admin/base_admin.html" %}
+
+{% block content %}
+{{ super() }}
+
+<div style="position: relative;">
+    <!-- Кнопка в правом верхнем углу -->
+    <a href="javascript:history.back()"
+       style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #5B46E5, #8A71F5); color: white;
+              padding: 10px 20px; border-radius: 5px; text-decoration: none;">
+        Вернуться к списку
+    </a>
+</div>
+
+<div class="form-container">
+    <h1>Редактировать пункт меню: {{menu_list.title}}</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="title">Название:</label>
+            <input type="text" name="title" id="title" class="form-input" required value="{{menu_list.title}}">
+        </div>
+        <div class="form-group">
+            <label for="url">Ссылка:</label>
+            <input type="text" name="url" id="url" class="form-input" required value="{{menu_list.url}}">
+        </div>
+        <button type="submit" class="styled-button">Изменить</button>
+    </form>
+</div>
+{% endblock %}

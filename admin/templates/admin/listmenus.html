@@ -1,0 +1,29 @@
+{% extends 'admin/base_admin.html' %}
+
+{% block content %}
+{{ super() }}
+<div style="position: relative;">
+    <!-- Кнопка в правом верхнем углу -->
+    <a href="{{ url_for('admin.addmenu') }}"
+       style="position: absolute; top: 10px; right: 10px; background: linear-gradient(135deg, #5B46E5, #8A71F5); color: white;
+              padding: 10px 20px; border-radius: 5px; text-decoration: none;">
+        Добавить пункт меню
+    </a>
+</div>
+<h1>{{title}}</h1>
+
+<ul class="list-posts">
+{% for p in menus %}
+<li>
+<a href="{{p.url}}"><p class="title">{{ p.title }}</p></a>
+<p class="link">{{ p.url }}</p>
+<form action="{{ url_for('admin.editmenu', menu_id=p.id) }}" method="post" style="display:inline;">
+<button type="submit" class="edit-button">Редактировать</button>
+</form>
+<form action="{{ url_for('admin.deletemenu', menu_id=p.id) }}" method="post" style="display:inline;">
+<button type="submit" class="delete-button">Удалить</button>
+</form>
+</li>
+{% endfor %}
+</ul>
+{% endblock %}
