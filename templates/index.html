@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+
+{% block content %}
+{{ super() }}
+
+        <div class="profile-container">
+
+            <h1>Добро пожаловать на Игровой Портал</h1>
+
+        </div>
+<p>Запускайте игры прямо в браузере!</p>
+
+ <img src="static/images/gamepad.png" alt="Геймпад" style="max-width: 50%;margin: 0 auto; display: block;">
+<h2> Наши игры разработанные на pygame.Чтобы увидеть остальные авторизируйтесь или зарегестрируйтесь и нажмите <a href="/listgames">сюда</a>.</h2>
+<div class="cards-container">
+             {% for game in games %}
+                {% if not game.link.startswith("http") %}
+            <div class ="game-card">
+
+             {% if game.cover %}
+           <div class="game-cover">
+            <img src="data:image/jpeg;base64,{{ game.cover|b64encode }}" alt="{{ game.title }}">
+        </div>
+            {% endif %}
+        <div class="game-title">
+            {{ game.title }}
+        </div>
+                </div>
+            {% endif %}
+            {% endfor %}
+
+        </div>
+
+{% endblock %}
