@@ -24,7 +24,7 @@
                 <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название (А-Я)</option>
                 <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Название (Я-А)</option>
                 <option value="time_asc" {% if sort == 'time_asc' %}selected{% endif %}>Дата (старые сначала)</option>
-                <option value="time_desc" {% if sort == 'time_desc' %}selected{% endif %}>Дата (новые сначала)</option>
+                <option value="time_desc" {% if sort == 'time_desc' or not sort %}selected{% endif %}>Дата (новые сначала)</option>
             </select>
         </div>
         <div class="form-group">
