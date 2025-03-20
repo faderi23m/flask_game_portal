@@ -413,7 +413,7 @@ def editmenu(menu_id):
     menu_list = MainMenu.query.get(menu_id)
     if not menu_list:
         flash('Пункт меню не найден', 'error')
-        return redirect(url_for('wlistmenu'))
+        return redirect(url_for('.listmenu'))
     if request.method == "POST":
         title = request.form.get('title')
         url = request.form.get('url')
