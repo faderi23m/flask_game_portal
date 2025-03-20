@@ -6,7 +6,7 @@
 <div class="flash {{ cat }}">{{ msg }}</div>
 {% endfor %}
 <div style="position: relative;">
-    <a href="{{ url_for('admin.addgame') }}" class="add_btn">Добавить игру</a>
+    <a href="{{ url_for('admin.add_game') }}" class="add_btn">Добавить игру</a>
 </div>
 
 <h1>Список игр</h1>
@@ -48,7 +48,7 @@
              style="max-width: 150px; max-height: 150px; display: block; margin: 10px 0;">
         {% endif %}
         <p class="annonce">{{ game.description[:50] | striptags }}</p>
-        <form action="{{ url_for('admin.editgame', game_id=game.id) }}" method="get" style="display:inline;">
+        <form action="{{ url_for('admin.edit_game', game_id=game.id) }}" method="get" style="display:inline;">
             <button type="submit" class="edit-button">Редактировать</button>
         </form>
         <form action="{{ url_for('admin.deletegame', game_id=game.id) }}" method="post" style="display:inline;">

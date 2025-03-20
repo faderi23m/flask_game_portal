@@ -240,62 +240,73 @@ def addmenu():
                 flash(f'Ошибка добавления в бд {e}','error')
     return render_template('admin/add_menus.html',menu = menu,title='Добавить пункт меню')
 
-@admin.route('/add_game', methods=["POST", "GET"])
-def addgame():
+@admin.route('/add_game', methods=['POST', 'GET'])
+def add_game():
     if not isLogged():
         return redirect(url_for('.login'))
-    if request.method == "POST":
+    if request.method == 'POST':
         title = request.form.get('title')
         description = request.form.get('description')
         game_type = request.form.get('game_type')
         cover_file = request.files.get('cover')
-        if not title or not description or not game_type:
-            flash('Заполните все поля','error')
+
+        if not title or not description or not cover_file:
+            flash('Все поля должны быть заполнены', 'error')
         else:
             try:
-                cover_data = cover_file.read()
-                new_game = Games(title=title,description=description,cover=cover_data)
                 if Games.query.filter_by(title=title).first():
-                    flash('Игра с таким названием уже имеется в бд', 'error')
+                    flash('Игра с таким название уже добавлена', 'error')
                     return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
+                cover_data = cover_file.read()
+                new_game = Games(title=title, description=description, cover=cover_data)
+
                 if game_type == 'link':
                     link = request.form.get('link')
-                    if Games.query.filter_by(link=link):
-                        flash('Игра с такой ссылкой уже имеется', 'error')
-                        return render_template('admin/add_game.html',menu = menu,title='Добавить игру')
-                    new_game.link == link
+
                     if not link:
-                        flash('Ссылка для внешней игры обязательна','error')
-                        return render_template('admin/add_game.html',menu = menu,title='Добавить игру')
+                        flash('Ссылка для внешней игры обязательна', 'error')
+                        return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
+                    if Games.query.filter_by(link=link).first():
+                        flash('Игра с такой ссылкой уже добавлена', 'error')
+                        return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
+
+
+                    new_game.link = link
                 elif game_type == 'pygame':
                     game_zip = request.files.get('game_zip')
-                    screenshots_zip = request.files.get('screenshots_zip')
+                    screenshots_zip = request.files.get('screens_zip')
                     if not game_zip:
-                        flash('Архив с игрой необходимо загрузить','error')
-                    game_folder = secure_filename(f'{title}')
+                        flash('Необходимо загрузить архив с игрой', 'error')
+                        return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
+
+                    game_folder = secure_filename(title)
                     game_path = os.path.join('static/games', game_folder)
-                    os.makedirs(game_path, exist_os=True)
+                    os.makedirs(game_path, exist_ok=True)
+
+                    # Сохранение и разархивирование архива игры
                     game_zip_path = os.path.join(game_path, 'game.zip')
                     game_zip.save(game_zip_path)
                     with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
                         for file_info in zip_ref.infolist():
-                            file_name = file_info.filename.split('/')[1] if '/' in file_info.filename else file_info.filename
-                            if file_name:
+                            # Извлекаем имя файла без верхней папки
+                            file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
+                            if file_name:  # Пропускаем пустые имена (например, корневые папки)
                                 zip_ref.extract(file_info, game_path)
                                 extracted_path = os.path.join(game_path, file_info.filename)
                                 target_path = os.path.join(game_path, file_name)
                                 if extracted_path != target_path:
                                     os.rename(extracted_path, target_path)
                     os.remove(game_zip_path)
+
+                    # Сохранение и разархивирование скриншотов
                     if screenshots_zip:
                         screenshots_path = os.path.join(game_path, 'screenshots')
-                        os.makedirs(screenshots_path, exist_os=True)
-                        screenshots_zip_path = os.path.join(game_path, 'screens.zip')
-                        screens_zip.save(screenshots_zip_path)
-                        with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
+                        os.makedirs(screenshots_path, exist_ok=True)
+                        screenshots_zip_path = os.path.join(screenshots_path, 'screenshots.zip')
+                        screenshots_zip.save(screenshots_zip_path)
+                        with zipfile.ZipFile(screenshots_zip_path, 'r') as zip_ref:
                             for file_info in zip_ref.infolist():
-                                file_name = file_info.filename.split('/')[
-                                    1] if '/' in file_info.filename else file_info.filename
+                                file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
                                 if file_name:
                                     zip_ref.extract(file_info, screenshots_path)
                                     extracted_path = os.path.join(screenshots_path, file_info.filename)
@@ -303,15 +314,17 @@ def addgame():
                                     if extracted_path != target_path:
                                         os.rename(extracted_path, target_path)
                         os.remove(screenshots_zip_path)
+
                     new_game.link = game_folder
+
                 db.session.add(new_game)
                 db.session.commit()
-                flash('Игра добавлена',"succes")
+                flash('Игра успешно добавлена', 'success')
                 return redirect(url_for('.listgames'))
             except Exception as e:
-                print(f'Ошибка добавления в бд {e}')
-                flash(f'Ошибка добавления в бд {e}','error')
-    return render_template('admin/add_game.html',menu = menu,title='Добавить игру')
+                db.session.rollback()
+                flash(f'Ошибка добавления игры: {str(e)}', 'error')
+    return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
 
 @admin.route('/delete_user/<int:user_id>', methods=["POST", "GET"])
 def deleteuser(user_id):
@@ -416,82 +429,90 @@ def editmenu(menu_id):
                 flash(f'Ошибка изменения {e}','error')
     return render_template('admin/edit_mainmenus.html',menu = menu,title='Редактировать пункт меню', menu_list=menu_list)
 
-@admin.route('/edit-game/<int:game_id>', methods=['POST','GET'])
-def editgame(game_id):
+@admin.route('/edit_game/<int:game_id>', methods=["POST", "GET"])
+def edit_game(game_id):
     if not isLogged():
         return redirect(url_for('.login'))
+
     game = Games.query.get(game_id)
     if not game:
-        flash('Игра не найдена', 'error')
-        return redirect(url_for('listgames'))
-    if request.method == "POST":
-        title = request.form.get('title')
-        description = request.form.get('description')
-        cover_file = request.files.get('cover')
-        game_type = request.form.get('game_type')
-        if title or description or (cover_file and cover_file.filename):
-            try:
-                if cover_file:
-                    cover_data = cover_file.read()
-                    game.cover = cover_data
-                if title:
-                    game.title = title
-                if description:
-                    game.description = description
-                if Games.query.filter_by(title=title).first():
-                    flash('Игра с таким названием уже имеется в бд', 'error')
-                    return render_template('admin/edit_game.html', menu=menu, title='Добавить игру')
-                if game_type == 'link':
-                    link = request.form.get('link')
-                    if Games.query.filter_by(link=link):
-                        flash('Игра с такой ссылкой уже имеется', 'error')
-                        return render_template('admin/edit_game.html', menu=menu, title='Добавить игру')
-                    new_game.link == link
-                    if not link:
-                        flash('Ссылка для внешней игры обязательна', 'error')
-                        return render_template('admin/edit_game.html', menu=menu, title='Добавить игру')
-                elif game_type == 'pygame':
-                    game_zip = request.files.get('game_zip')
-                    screenshots_zip = request.files.get('screens_zip')
-                    if not game_zip:
-                        flash('Архив с игрой необходимо загрузить', 'error')
-                    game_folder = secure_filename(f'{game_title}')
-                    game_path = os.path.join('static/games', game_folder)
-                    os.makedirs(game_path, exist_os=True)
-                    game_zip_path = os.path.join(game_path, 'game.zip')
-                    game_zip.save(game_zip_path)
-                    with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
-                        for file_info in zip_ref.infolist():
-                            file_name = file_info.filename.split('/')[
-                                1] if '/' in file_info.filename else file_info.filename
-                            if file_name:
-                                zip_ref.extract(file_info, game_path)
-                                extracted_path = os.path.join(game_path, file_info.filename)
-                                target_path = os.path.join(game_path, file_name)
-                                if extracted_path != target_path:
-                                    os.rename(extracted_path, target_path)
-                    os.remove(game_zip_path)
+        flash("Игра не найдена", "error")
+        return redirect(url_for('.listgames'))
 
-                    screenshots_path = os.path.join(game_path, 'screens')
-                    os.makedirs(screenshots_path, exist_os=True)
-                    screenshots_zip_path = os.path.join(game_path, 'screens.zip')
-                    screenshots_zip.save(screenshots_zip_path)
-                    with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
-                        for file_info in zip_ref.infolist():
-                            file_name = file_info.filename.split('/')[
-                                1] if '/' in file_info.filename else file_info.filename
-                            if file_name:
-                                zip_ref.extract(file_info, screenshots_path)
-                                extracted_path = os.path.join(screenshots_path, file_info.filename)
-                                target_path = os.path.join(screenshots_path, file_name)
-                                if extracted_path != target_path:
-                                    os.rename(extracted_path, target_path)
-                    os.remove(screenshots_zip_path)
-                    new_game.link = game_folder
-                db.session.commit()
-                flash('Игра изменена', "succes")
-                return redirect(url_for('.listgames'))
-            except Exception as e:
-                print(f'Ошибка изменения {e}')
-                flash(f'Ошибка изменения {e}', 'error')
-    return render_template('admin/edit_game.html', menu = menu, title = 'Редактировать игру', game=game)
+    if request.method == "POST":
+        title = request.form.get('title', '').strip()
+        description = request.form.get('description', '').strip()
+        game_type = request.form.get('game_type')
+        cover_file = request.files.get('cover')
+
+        if title or description or (cover_file and cover_file.filename):
+            if title and description:
+                try:
+                    if Games.query.filter_by(title=title).first():
+                        flash('Игра с таким название уже добавлена', 'error')
+                        return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру')
+                    game.title = title
+                    game.description = description
+
+                    if cover_file and cover_file.filename:
+                        cover_data = cover_file.read()
+                        game.cover = cover_data
+
+                    if game_type == 'link':
+                        link = request.form.get('link')
+                        if not link:
+                            flash('Ссылка для внешней игры обязательна', 'error')
+                            return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру')
+                        if Games.query.filter_by(link=link).first():
+                            flash('Игра с такой ссылкой уже добавлена', 'error')
+                            return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру')
+                        game.link = link
+                    elif game_type == 'pygame':
+                        game_zip = request.files.get('game_zip')
+                        screenshots_zip = request.files.get('screens_zip')
+                        if game_zip:  # Обновляем только если загружен новый архив
+                            game_folder = secure_filename(title)
+                            game_path = os.path.join('static/games', game_folder)
+                            os.makedirs(game_path, exist_ok=True)
+
+                            game_zip_path = os.path.join(game_path, 'game.zip')
+                            game_zip.save(game_zip_path)
+                            with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
+                                for file_info in zip_ref.infolist():
+                                    file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
+                                    if file_name:
+                                        zip_ref.extract(file_info, game_path)
+                                        extracted_path = os.path.join(game_path, file_info.filename)
+                                        target_path = os.path.join(game_path, file_name)
+                                        if extracted_path != target_path:
+                                            os.rename(extracted_path, target_path)
+                            os.remove(game_zip_path)
+
+                            if screenshots_zip:
+                                screenshots_path = os.path.join(game_path, 'screenshots')
+                                os.makedirs(screenshots_path, exist_ok=True)
+                                screenshots_zip_path = os.path.join(screenshots_path, 'screenshots.zip')
+                                screenshots_zip.save(screenshots_zip_path)
+                                with zipfile.ZipFile(screenshots_zip_path, 'r') as zip_ref:
+                                    for file_info in zip_ref.infolist():
+                                        file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
+                                        if file_name:
+                                            zip_ref.extract(file_info, screenshots_path)
+                                            extracted_path = os.path.join(screenshots_path, file_info.filename)
+                                            target_path = os.path.join(screenshots_path, file_name)
+                                            if extracted_path != target_path:
+                                                os.rename(extracted_path, target_path)
+                                os.remove(screenshots_zip_path)
+
+                            game.link = f'/static/games/{game_folder}'
+
+                    db.session.commit()
+                    flash("Игра успешно обновлена", "success")
+                    return redirect(url_for('.listgames'))
+                except Exception as e:
+                    db.session.rollback()
+                    flash(f"Ошибка обновления игры: {str(e)}", "error")
+            else:
+                flash("Все поля должны быть заполнены", "error")
+
+    return render_template('admin/edit_game.html', menu=menu, title="Редактировать игру", game=game)
