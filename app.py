@@ -1,6 +1,6 @@
 import os
 import base64
-from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response, send_from_directory
+from flask import Flask, render_template, url_for, request, flash, session, redirect, abort, g, make_response, send_from_directory, send_file
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -109,6 +109,18 @@ def pygame():
     game_path = f'games/{request.cookies.get("game_path")}/build/web'
     print(game_path)
     return send_from_directory(os.path.join(app.static_folder,game_path), path='index.html')
+
+#-----------------------------------------------------------------------------------------------------------------
+"""
+                                    Маршрут для скачивания УСТАНОВЩИКА ИГРЫ на сайте
+"""
+#-----------------------------------------------------------------------------------------------------------------
+@app.route('/download_installer/<int:game_id>')
+def download_installer(game_id):
+    game = Games.query.get_or_404(game_id)
+    if game.installer and os.path.exists(game.installer):
+        return send_file(game.installer, as_attachment=True, download_name=f"{game.title}.exe")
+    abort(404)
 
 @app.route('/<path:path>')
 @login_required

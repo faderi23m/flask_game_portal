@@ -28,6 +28,15 @@
             </select>
         </div>
         <div class="form-group">
+            <label for="genre">Жанр:</label>
+            <select name="genre" id="genre" class="form-input">
+            <option value="" {% if not filter_genre %}selected{% endif %}>Все</option>
+            {% for genre in genres %}
+                <option value="{{ genre }}" {% if filter_genre == genre %}selected{% endif %}>{{ genre }}</option>
+            {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
             <label for="type">Тип игры:</label>
             <select name="type" id="type" class="form-input">
                 <option value="" {% if not filter_type %}selected{% endif %}>Все</option>
