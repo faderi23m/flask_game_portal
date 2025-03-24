@@ -274,7 +274,7 @@ def add_game():
                     new_game.link = link
                 elif game_type == 'pygame':
                     game_zip = request.files.get('game_zip')
-                    screenshots_zip = request.files.get('screens_zip')
+                    screenshots_zip = request.files.get('screenshots_zip')
                     if not game_zip:
                         flash('Необходимо загрузить архив с игрой', 'error')
                         return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
@@ -287,15 +287,7 @@ def add_game():
                     game_zip_path = os.path.join(game_path, 'game.zip')
                     game_zip.save(game_zip_path)
                     with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
-                        for file_info in zip_ref.infolist():
-                            # Извлекаем имя файла без верхней папки
-                            file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
-                            if file_name:  # Пропускаем пустые имена (например, корневые папки)
-                                zip_ref.extract(file_info, game_path)
-                                extracted_path = os.path.join(game_path, file_info.filename)
-                                target_path = os.path.join(game_path, file_name)
-                                if extracted_path != target_path:
-                                    os.rename(extracted_path, target_path)
+                        zip_ref.extractall(game_path)
                     os.remove(game_zip_path)
 
                     # Сохранение и разархивирование скриншотов
@@ -305,14 +297,7 @@ def add_game():
                         screenshots_zip_path = os.path.join(screenshots_path, 'screenshots.zip')
                         screenshots_zip.save(screenshots_zip_path)
                         with zipfile.ZipFile(screenshots_zip_path, 'r') as zip_ref:
-                            for file_info in zip_ref.infolist():
-                                file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
-                                if file_name:
-                                    zip_ref.extract(file_info, screenshots_path)
-                                    extracted_path = os.path.join(screenshots_path, file_info.filename)
-                                    target_path = os.path.join(screenshots_path, file_name)
-                                    if extracted_path != target_path:
-                                        os.rename(extracted_path, target_path)
+                            zip_ref.extractall(screenshots_path)
                         os.remove(screenshots_zip_path)
 
                     new_game.link = game_folder
@@ -469,7 +454,7 @@ def edit_game(game_id):
                         game.link = link
                     elif game_type == 'pygame':
                         game_zip = request.files.get('game_zip')
-                        screenshots_zip = request.files.get('screens_zip')
+                        screenshots_zip = request.files.get('screenshots_zip')
                         if game_zip:  # Обновляем только если загружен новый архив
                             game_folder = secure_filename(title)
                             game_path = os.path.join('static/games', game_folder)
@@ -478,14 +463,7 @@ def edit_game(game_id):
                             game_zip_path = os.path.join(game_path, 'game.zip')
                             game_zip.save(game_zip_path)
                             with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
-                                for file_info in zip_ref.infolist():
-                                    file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
-                                    if file_name:
-                                        zip_ref.extract(file_info, game_path)
-                                        extracted_path = os.path.join(game_path, file_info.filename)
-                                        target_path = os.path.join(game_path, file_name)
-                                        if extracted_path != target_path:
-                                            os.rename(extracted_path, target_path)
+                                zip_ref.extractall(game_path)
                             os.remove(game_zip_path)
 
                             if screenshots_zip:
@@ -494,14 +472,7 @@ def edit_game(game_id):
                                 screenshots_zip_path = os.path.join(screenshots_path, 'screenshots.zip')
                                 screenshots_zip.save(screenshots_zip_path)
                                 with zipfile.ZipFile(screenshots_zip_path, 'r') as zip_ref:
-                                    for file_info in zip_ref.infolist():
-                                        file_name = file_info.filename.split('/', 1)[1] if '/' in file_info.filename else file_info.filename
-                                        if file_name:
-                                            zip_ref.extract(file_info, screenshots_path)
-                                            extracted_path = os.path.join(screenshots_path, file_info.filename)
-                                            target_path = os.path.join(screenshots_path, file_name)
-                                            if extracted_path != target_path:
-                                                os.rename(extracted_path, target_path)
+                                    zip_ref.extractall(screenshots_path)
                                 os.remove(screenshots_zip_path)
 
                             game.link = f'/static/games/{game_folder}'
