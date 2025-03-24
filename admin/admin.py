@@ -280,7 +280,7 @@ def add_game():
                         return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
 
                     game_folder = secure_filename(title)
-                    game_path = os.path.join('static/games', game_folder)
+                    game_path = os.path.join('flask_game_portal/static/games', game_folder)
                     os.makedirs(game_path, exist_ok=True)
 
                     # Сохранение и разархивирование архива игры
@@ -337,8 +337,8 @@ def deletegame(game_id):
         game = Games.query.get(game_id)
         if game:
             if game.link and not game.link.startswith('http'):
-                game_folder = game.link.replace('/static/games/', '')
-                game_path = os.path.join('/static/games', game_folder)
+                game_folder = game.link.replace('flask_game_portal/static/games/', '')
+                game_path = os.path.join('flask_game_portal/static/games', game_folder)
                 if os.path.exists(game_path):
                     shutil.rmtree(game_path)
                     flash(f'Папка с игрой {game_folder} удалена', 'success')
@@ -457,7 +457,7 @@ def edit_game(game_id):
                         screenshots_zip = request.files.get('screenshots_zip')
                         if game_zip:  # Обновляем только если загружен новый архив
                             game_folder = secure_filename(title)
-                            game_path = os.path.join('static/games', game_folder)
+                            game_path = os.path.join('flask_game_portal/static/games', game_folder)
                             os.makedirs(game_path, exist_ok=True)
 
                             game_zip_path = os.path.join(game_path, 'game.zip')
