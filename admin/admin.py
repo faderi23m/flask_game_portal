@@ -477,7 +477,8 @@ def edit_game(game_id):
         if title or description or (cover_file and cover_file.filename):
             if title and description:
                 try:
-                    if Games.query.filter_by(title=title).first():
+                    existing_game = Games.query.filter_by(title).first()
+                    if existing_game.id != game_id and existing_game:
                         flash('Игра с таким название уже добавлена', 'error')
                         return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру', genres=GENRES)
                     game.title = title
