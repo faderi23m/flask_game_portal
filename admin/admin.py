@@ -19,7 +19,7 @@ menu = [{'url' : '.index', 'title' : 'Панель'},
 
 SECRET_KEY = "6LcPresqAAAAAAz89KkedGqJEDNee9IAcwd5Q0d8"
 
-GENRES = ['Экшн','Приключения','Стратегия','Симулятор','Головоломка','Другое']
+GENRES = ['🔫Экшн', '🌏Приключения', '🧙‍♂️RPG', '📈Стратегия', '💼Симулятор', '⚽Спорт', '🗿Головоломка', '🏃‍♂️Платформер', 'Другое']
 
 def login_admin():
     session['admin_logged'] = 1
@@ -278,11 +278,12 @@ def add_game():
 
 
                     new_game.link = link
+                    new_game.game_type = 'link'
                 elif game_type == 'pygame':
-                    game_zip = request.files.get('game_zip')
+                    pygame_zip = request.files.get('pygame_zip')
                     installer_file = request.files.get('installer')
                     screenshots_zip = request.files.get('screenshots_zip')
-                    if not game_zip:
+                    if not pygame_zip:
                         flash('Необходимо загрузить архив с игрой', 'error')
                         return render_template('admin/add_game.html', menu=menu, title='Добавить игру', genres=GENRES)
 
@@ -291,15 +292,15 @@ def add_game():
                     os.makedirs(game_path, exist_ok=True)
 
                     # Сохранение и разархивирование архива игры
-                    game_zip_path = os.path.join(game_path, 'game.zip')
-                    game_zip.save(game_zip_path)
-                    with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
-                        zip_ref.extractall(game_path)
-                    os.remove(game_zip_path)
+                    pygame_zip_path = os.path.join(pygame_path, 'pygame.zip')
+                    pygame_zip.save(pygame_zip_path)
+                    with zipfile.ZipFile(pygame_zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(pygame_path)
+                    os.remove(pygame_zip_path)
 
                     # Сохранение и разархивирование скриншотов
                     if screenshots_zip:
-                        screenshots_path = os.path.join(game_path, 'screenshots')
+                        screenshots_path = os.path.join(pygame_path, 'screenshots')
                         os.makedirs(screenshots_path, exist_ok=True)
                         screenshots_zip_path = os.path.join(screenshots_path, 'screenshots.zip')
                         screenshots_zip.save(screenshots_zip_path)
@@ -307,11 +308,42 @@ def add_game():
                             zip_ref.extractall(screenshots_path)
                         os.remove(screenshots_zip_path)
                     if installer_file:
-                        installer_path = os.path.join(game_path, f'{game_folder}.exe')
+                        installer_path = os.path.join(pygame_path, f'{pygame_folder}.exe')
                         installer_file.save(installer_path)
                         new_game.installer = installer_path
+                    new_game.link = pygame_folder
+                    new_game.game_type = 'pygame'
+                elif game_type == 'unity':
+                    unity_zip = request.files.get('unity_zip')
+                    unity_installer = request.files.get('unity_installer')
+                    unity_screenshots_zip = request.files.get('unity_screenshots_zip')
+                    if not unity_zip:
+                        flash('Необходимо загрузить архив с Unity WebGL игрой', 'error')
+                        return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
+                    game_folder = secure_filename(unity_zip.filename).rsplit('.', 1)[0]
+                    # game_path = os.path.join('static/games', game_folder)
+                    game_path = os.path.join('flask_game_portal/static/games', game_folder)
+                    os.makedirs(game_path, exist_ok=True)
+                    game_zip_path = os.path.join(game_path, 'unity_game.zip')
+                    unity_zip.save(game_zip_path)
+                    with zipfile.ZipFile(game_zip_path, 'r') as zip_ref:
+                        zip_ref.extractall(game_path)
+                    os.remove(game_zip_path)
+                    # Сохранение и разархивирование скриншотов с сохранением структуры
+                    if unity_screenshots_zip:
+                        unity_screenshots_path = os.path.join(game_path, 'screenshots')
+                        os.makedirs(unity_screenshots_path, exist_ok=True)
+                        screenshots_zip_path = os.path.join(unity_screenshots_path, 'screenshots.zip')
+                        unity_screenshots_zip.save(screenshots_zip_path)
+                        with zipfile.ZipFile(screenshots_zip_path, 'r') as zip_ref:
+                            zip_ref.extractall(unity_screenshots_path)  # Извлекаем все с исходной структурой
+                        os.remove(screenshots_zip_path)
+                    if unity_installer:
+                        installer_path = os.path.join(game_path, f"{game_folder}.exe")
+                        unity_installer.save(installer_path)
+                        new_game.installer = installer_path
                     new_game.link = game_folder
-
+                    new_game.game_type = 'unity'
                 db.session.add(new_game)
                 db.session.commit()
                 flash('Игра успешно добавлена', 'success')
@@ -346,7 +378,7 @@ def deletegame(game_id):
     try:
         game = Games.query.get(game_id)
         if game:
-            if game.link and not game.link.startswith('http'):
+            if game.game_type != 'link' and game.link:
                 game_folder = game.link.replace('flask_game_portal/static/games/', '')
                 game_path = os.path.join('flask_game_portal/static/games', game_folder)
                 if os.path.exists(game_path):
@@ -464,6 +496,8 @@ def edit_game(game_id):
                             flash('Игра с такой ссылкой уже добавлена', 'error')
                             return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру', genres=GENRES)
                         game.link = link
+                        game.game_type = 'link'
+                        game.installer = None
                     elif game_type == 'pygame':
                         game_zip = request.files.get('game_zip')
                         screenshots_zip = request.files.get('screenshots_zip')
@@ -497,6 +531,54 @@ def edit_game(game_id):
                                 os.remove(game.installer)
                             installer_file.save(installer_path)
                             game.installer = installer_path
+                        game.game_type = 'pygame'
+                    elif game_type == 'unity' and request.files.get('unity.zip'):
+                        unity_zip = request.files.get('unity_zip')
+                        unity_installer = request.files.get('unity_installer')
+                        unity_screenshots_zip = request.files.get('unity_screenshots_zip')
+                        if unity_installer:  # Обновляем только если загружен новый архив
+                            # Удаляем старую папку игры, если она существует
+                            old_game_folder = game.link
+                            if old_game_folder and os.path.exists(
+                                os.path.join('flask_game_portal/static/games', old_game_folder)):
+                                shutil.rmtree(os.path.join('flask_game_portal/static/games', old_game_folder))
+                            # if old_game_folder and os.path.exists(os.path.join('static/games', old_game_folder)):
+                            #     shutil.rmtree(os.path.join('static/games', old_game_folder))
+
+                            # Создаем новую папку с именем игры
+                            game_folder = secure_filename(unity_zip.filename).rsplit('.', 1)[0]
+                            # game_path = os.path.join('static/games', game_folder)
+                            game_path = os.path.join('flask_game_portal/static/games', game_folder)
+                            os.makedirs(game_path, exist_ok=True)
+
+                            # Сохранение и разархивирование архива игры с сохранением структуры
+                            unity_game_zip_path = os.path.join(game_path, 'game.zip')
+                            unity_zip.save(unity_game_zip_path)
+                            with zipfile.ZipFile(unity_game_zip_path, 'r') as zip_ref:
+                                zip_ref.extractall(game_path)  # Извлекаем все с исходной структурой
+                            os.remove(unity_game_zip_path)
+
+                            # Сохранение и разархивирование скриншотов с сохранением структуры
+                            if unity_screenshots_zip:
+                                screenshots_path = os.path.join(game_path, 'screenshots')
+                                os.makedirs(screenshots_path, exist_ok=True)
+                                screenshots_zip_path = os.path.join(screenshots_path, 'screenshots.zip')
+                                unity_screenshots_zip.save(screenshots_zip_path)
+                                with zipfile.ZipFile(screenshots_zip_path, 'r') as zip_ref:
+                                    zip_ref.extractall(screenshots_path)  # Извлекаем все с исходной структурой
+                                os.remove(screenshots_zip_path)
+                            game.link = game_folder
+                        if unity_installer:
+                            game_folder = secure_filename(title)
+                            # game_path = os.path.join('static/games', game_folder)
+                            game_path = os.path.join('flask_game_portal/static/games', game_folder)
+                            os.makedirs(game_path, exist_ok=True)
+                            installer_path = os.path.join(game_path, f"{game_folder}.exe")
+                            if game.installer and os.path.exists(game.installer):
+                                os.remove(game.installer)
+                            unity_installer.save(installer_path)
+                            game.installer = installer_path
+                        game.game_type = 'unity'
                     db.session.commit()
                     flash("Игра успешно обновлена", "success")
                     return redirect(url_for('.listgames'))

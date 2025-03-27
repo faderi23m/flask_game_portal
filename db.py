@@ -84,6 +84,7 @@ class Games(db.Model):
     link = db.Column(db.Text, nullable=False)
     genre = db.Column(db.Text, nullable=True)
     installer = db.Column(db.Text, nullable=True)
+    game_type = db.Column(db.String(20), nullable=False, default='link')
     time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
