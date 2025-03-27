@@ -287,9 +287,9 @@ def add_game():
                         flash('Необходимо загрузить архив с игрой', 'error')
                         return render_template('admin/add_game.html', menu=menu, title='Добавить игру', genres=GENRES)
 
-                    game_folder = secure_filename(title)
-                    game_path = os.path.join('flask_game_portal/static/games', game_folder)
-                    os.makedirs(game_path, exist_ok=True)
+                    pygame_folder = secure_filename(title)
+                    pygame_path = os.path.join('flask_game_portal/static/games', pygame_folder)
+                    os.makedirs(pygame_path, exist_ok=True)
 
                     # Сохранение и разархивирование архива игры
                     pygame_zip_path = os.path.join(pygame_path, 'pygame.zip')
