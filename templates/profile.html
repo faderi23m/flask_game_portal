@@ -26,12 +26,11 @@
             <ul class="info-list">
                 <li><span class="label">Имя:</span> {{ current_user.getName() }}</li>
                 <li><span class="label">Email:</span> {{ current_user.getEmail() }}</li>
-                {% if current_user.getRole() == 'admin' %}
-                    <li><a href="/admin" class="btn btn-success">Админ панель</a></li>
-                {% endif %}
             </ul>
             <div class="profile-actions">
-
+                {% if current_user.getRole() == 'admin' %}
+                    <a href="/admin" class="btn btn-admin">Админ панель</a>
+                {% endif %}
                 <a href="{{ url_for('logout') }}" class="btn btn-logout">Выйти</a>
             </div>
         </div>

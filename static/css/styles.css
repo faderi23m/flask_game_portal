@@ -155,7 +155,17 @@ iframe {
     text-align: center;
     transition: all 0.3s ease;
 }
-
+.btn.btn-admin {
+    color: #fff;
+    background: #2db949;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
 .btn.btn-success:hover {
     background: #41c35b;
 }
