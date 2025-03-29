@@ -319,5 +319,33 @@ def edit_profile():
     form.name.data = current_user.getName()
     return render_template("edit_profile.html", menu=MainMenu.query.all(), title="Редактирование профиля", form = form)
 
+@app.route('/list_all_users')
+@login_required
+def list_all_users():
+    users = Users.query.all()
+    return render_template('listallusers.html', menu=MainMenu.query.all(), title='Список зарегестрированных людей', users=users)
+
+@app.route('/profile_user/<int:user_id>')
+@login_required
+def profile_user(user_id):
+    user = Users.query.filter_by(id=user_id).first()
+    return render_template('profile_user.html', menu=MainMenu.query.all(), title='Просмотр профиля пользователя', user=user)
+
+@app.route('/ava/<int:user_id>')
+@login_required
+def ava(user_id):
+    user = Users.query.filter_by(id=user_id).first()
+    img = None
+    if not user or not hasattr(user, 'avatar') or not user.avatar:
+        try:
+            with app.open_resource(app.root_path + url_for('static', filename='images/default.png'), "rb") as f:
+                img = f.read()
+        except FileNotFoundError as e:
+            print("Не найден аватар по умолчанию: " + str(e))
+    else:
+        img = user.avatar
+
+    return img
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)

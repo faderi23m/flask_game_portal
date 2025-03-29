@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+ 
+{% block content %}
+{{ super() }}
+
+{%for cat,msg in get_flashed_messages(True)%}
+<div class="flash {{cat}}">{{msg}}</div>
+{% endfor %}
+<h1 class="profile-container">Список зарегестрированных людей</h1>
+
+<div class="cards-container">
+    {% for p in users %}
+        <a href="{{url_for('profile_user', user_id=p.id)}}" class="game-card">
+            {% if p.avatar %}
+                <div class="game-cover"><img src="{{ url_for('ava', user_id=p.id) }}" alt="Аватар" class="avatar-image"></div>
+            {% endif %}
+            <div class="game-title">
+                {{p.name}}
+                {{p.email}}
+            </div>
+        </a>
+    {% endfor %}
+</div>
+{% endblock %}
