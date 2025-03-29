@@ -159,7 +159,7 @@ def listusers():
                                  (Users.email.ilike(f'%{search}%'))
                                  )
         if filter_role:
-            query.filter(Users.role == filter_role)
+            query = query.filter(Users.role == filter_role)
         if sort == 'name_asc':
             query = query.order_by(asc(Users.name))
         elif sort == 'name_desc':
