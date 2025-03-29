@@ -14,7 +14,7 @@
 <h2> Наши игры разработанные на pygame.Чтобы увидеть остальные авторизируйтесь или зарегестрируйтесь и нажмите <a href="/listgames">сюда</a>.</h2>
 <div class="cards-container">
              {% for game in games %}
-                {% if not game.link.startswith("http") %}
+                {% if game.game_type == 'pygame' %}
             <div class ="game-card">
 
              {% if game.cover %}

@@ -26,6 +26,7 @@
             <ul class="info-list">
                 <li><span class="label">Имя:</span> {{ current_user.getName() }}</li>
                 <li><span class="label">Email:</span> {{ current_user.getEmail() }}</li>
+                <li></li>
             </ul>
             <div class="profile-actions">
                 {% if current_user.getRole() == 'admin' %}
