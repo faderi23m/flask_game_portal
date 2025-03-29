@@ -593,3 +593,26 @@ def edit_game(game_id):
                 flash("Все поля должны быть заполнены", "error")
 
     return render_template('admin/edit_game.html', menu=menu, title="Редактировать игру", game=game, genres=GENRES)
+@admin.route("/set_admin/<int:user_id>", methods=['GET','POST'])
+def set_admin(user_id):
+    user = Users.query.get_or_404(user_id)
+    try:
+        user.role = 'admin'
+        db.session.commit()
+        flash(f'Пользователь {user.name} обновлен', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка обновления пользователя {user.name}', 'error')
+    return redirect(url_for('.listusers'))
+
+@admin.route("/set_user/<int:user_id>", methods=['GET','POST'])
+def set_user(user_id):
+    user = Users.query.get_or_404(user_id)
+    try:
+        user.role = 'user'
+        db.session.commit()
+        flash(f'Пользователь {user.name} обновлен', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Ошибка обновления пользователя {user.name}', 'error')
+    return redirect(url_for('.listusers'))

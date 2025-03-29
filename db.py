@@ -45,6 +45,7 @@ class Users(db.Model):
     email = db.Column(db.Text, nullable=False)
     psw = db.Column(db.Text, nullable=False)
     avatar = db.Column(db.LargeBinary, default=None)
+    role = db.Column(db.Text, nullable=False, default='user')
     time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
 
     def __repr__(self):
@@ -63,7 +64,7 @@ class Users(db.Model):
                 return True
             return False
         except Exception as e:
-            print(f'ошибка обновления автара в БД: {e}')
+            print(f'Ошибка обновления автара в БД: {e}')
             return False
     @staticmethod
     def updateUser(user_id, **kwargs):

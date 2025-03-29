@@ -42,9 +42,19 @@
 <li>
     <p class="annonce">Имя: {{ p.name }}</p>
     <p class="annonce">E-mail: {{ p.email }}</p>
+    <p class="annonce">Роль: {{ p.role }}</p>
     <form action="{{ url_for('admin.deleteuser', user_id=p.id) }}" method="post" style="display:inline;">
         <button type="submit" class="delete-button">Удалить</button>
     </form>
+    {% if p.role == 'user' %}
+        <form style="display:inline;" action="{{url_for('admin.set_admin', user_id=p.id)}}" method="post">
+            <button type="submit" class="edit-button">Сделать админом</button>
+        </form>
+    {% else %}
+        <form style="display:inline;" action="{{url_for('admin.set_user', user_id=p.id)}}" method="post">
+            <button type="submit" class="edit-button">Сделать пользователем</button>
+        </form>
+    {% endif %}
 </li>
 {% endfor %}
 </ul>
