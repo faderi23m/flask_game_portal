@@ -41,21 +41,21 @@
         <div class="form-group">
             <label>Тип игры:</label>
             <div class="radio-group">
-                <input type="radio" name="game_type" value="link" id="game_link" {% if game.link.startswith('http') %}checked{% endif %}>
+                <input type="radio" name="game_type" value="link" id="game_link" {% if game.game_type == 'link' %}checked{% endif %}>
                 <label for="game_link">Внешняя ссылка</label>
-                <input type="radio" name="game_type" value="pygame" id="game_pygame" {% if game.link.startswith('/static/games') %}checked{% endif %}>
+                <input type="radio" name="game_type" value="pygame" id="game_pygame" {% if game.game_type == 'pygame' %}checked{% endif %}>
                 <label for="game_pygame">Pygame игра</label>
                 <input type="radio" name="game_type" value="unity" id="game_unity" {% if game.game_type == 'unity' %}checked{% endif %}>
                 <label for="game_unity">Unity WebGL игра</label>
             </div>
         </div>
 
-        <div class="form-group" id="link_field" style="display: {% if game.link.startswith('http') %}block{% else %}none{% endif %};">
+        <div class="form-group" id="link_field" style="display: {% if game.game_type == 'link' %}block{% else %}none{% endif %};">
             <label for="link">Ссылка на игру:</label>
-            <input type="text" name="link" id="link" class="form-input" value="{% if game.link.startswith('http') %}{{ game.link }}{% endif %}">
+            <input type="text" name="link" id="link" class="form-input" value="{% if game.game_type == 'link' %}{{ game.link }}{% endif %}">
         </div>
 
-        <div class="form-group" id="pygame_fields" style="display: {% if game.link.startswith('/static/games') %}block{% else %}none{% endif %};">
+        <div class="form-group" id="pygame_fields" style="display: {% if game.game_type == 'pygame' %}block{% else %}none{% endif %};">
             <label for="pygame_zip">Новый архив с игрой (опционально):</label>
             <input type="file" name="pygame_zip" id="pygame_zip" class="form-input" accept=".zip">
             <label for="installer">Новый установщик (.exe, заменит текущий, необязательно):</label>
