@@ -25,6 +25,8 @@ class RegisterForm(FlaskForm):
         if field.data and field.data != '':
             if not re.match(r'[a-zа-яA-ZА-Я0-9\s]+$', field.data):
                 raise ValidationError('Имя может включать только буквы, цифры и пробелы')
+            if Users.query.filter_by(name=field.data).first():
+                raise ValidationError('Пользователь с таким именем уже имеется')
 
     def validate_email(self,field):
         if Users.query.filter_by(email=field.data).first():
@@ -43,6 +45,8 @@ class EditProfileForm(FlaskForm):
         if field.data and field.data != '':
             if not re.match(r'[a-zа-яA-ZА-Я0-9\s]+$', field.data):
                 raise ValidationError('Имя может включать только буквы, цифры и пробелы.')
+            if Users.query.filter_by(name=field.data).first():
+                raise ValidationError('Пользователь с таким именем уже имеется')
 
     def validate_email(self,field):
         from flask_login import current_user

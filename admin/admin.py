@@ -15,7 +15,8 @@ menu = [{'url' : '.index', 'title' : 'Панель'},
         {'url' : '.logout', 'title' : 'Выйти'},
         {'url' : '.listusers', 'title' : 'Список пользователей'},
         {'url' : '.listmenu', 'title' : 'Список пунктов меню'},
-        {'url' : '.listgames', 'title' : 'Список игр'}]
+        {'url' : '.listgames', 'title' : 'Список игр'},
+        {'url' : 'index', 'title' : '/'}]
 
 SECRET_KEY = "6LcPresqAAAAAAz89KkedGqJEDNee9IAcwd5Q0d8"
 
