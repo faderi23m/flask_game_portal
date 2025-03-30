@@ -299,6 +299,8 @@ def edit_profile():
                 updates['email'] = form.email.data
             if form.password.data:
                 updates['password'] = generate_password_hash(form.password.data)
+            if form.about.data:
+                updates['about'] = form.about.data
             if updates:
                 Users.updateUser(current_user.get_id(), **updates)
             if form.avatar.data:
@@ -317,13 +319,14 @@ def edit_profile():
             flash(f'Ошибка обновления профиля {e}','error')
     form.email.data = current_user.getEmail()
     form.name.data = current_user.getName()
+    form.about.data = current_user.getAbout()
     return render_template("edit_profile.html", menu=MainMenu.query.all(), title="Редактирование профиля", form = form)
 
 @app.route('/list_all_users')
 @login_required
 def list_all_users():
     users = Users.query.all()
-    return render_template('listallusers.html', menu=MainMenu.query.all(), title='Список зарегестрированных людей', users=users)
+    return render_template('listallusers.html', menu=MainMenu.query.all(), title='Список зарегестрированных людей', users=users, current=current_user)
 
 @app.route('/profile_user/<int:user_id>')
 @login_required
@@ -344,8 +347,11 @@ def ava(user_id):
             print("Не найден аватар по умолчанию: " + str(e))
     else:
         img = user.avatar
-
-    return img
+    if img:
+        h = make_response(img)
+        h.headers['Content-Type'] = 'image/png'
+        return h
+    return ''
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)

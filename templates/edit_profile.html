@@ -54,6 +54,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label class="label">{{ form.about.label }}</label>
+                    {{ form.about(class="form_input") }}
+                    {% for error in form.about.errors %}
+                        <span class="text_error">{{ error }}</span>
+                    {% endfor %}
+                </div>
+
+                <div class="form-group">
                     <label class="label">{{ form.avatar.label }}</label>
                     {{ form.avatar(class="file-input") }}
                     {% for error in form.avatar.errors %}

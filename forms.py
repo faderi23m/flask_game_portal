@@ -4,6 +4,7 @@ from wtforms import StringField, SubmitField, BooleanField, PasswordField, FileF
 from wtforms.validators import DataRequired, Email, Length, EqualTo, ValidationError, Optional
 from db import Users
 import re
+from flask_login import current_user
 
 class LoginForm(FlaskForm):
     email = StringField('Email: ', validators=[Email(message='Некорректный email')])
@@ -39,17 +40,17 @@ class EditProfileForm(FlaskForm):
     password_confirm = PasswordField('Повтор нового пароля:', validators=[EqualTo('password', message="Пароли не совпадают"), Optional()])
     avatar = FileField('Новый аватар', validators=[FileAllowed(["png", "PNG", "gif", "GIF", "jpg", "jpeg","jfif"],
                                                                'Разрешены только изображения формата png, gif, jpg, jpeg, jfif, GIF, PNG')])
+    about = StringField('Обо мне:', validators=[Length(min=0, max=500, message='Поле обо мне должно содержать до 500 символов'), Optional()])
     submit = SubmitField('Сохранить', render_kw={'class': 'btn btn-success'})
 
     def validate_name(self,field):
         if field.data and field.data != '':
             if not re.match(r'[a-zа-яA-ZА-Я0-9\s]+$', field.data):
                 raise ValidationError('Имя может включать только буквы, цифры и пробелы.')
-            if Users.query.filter_by(name=field.data).first():
+            if Users.query.filter(Users.name == field.data, Users.id != current_user.get_id()).first():
                 raise ValidationError('Пользователь с таким именем уже имеется')
 
     def validate_email(self,field):
-        from flask_login import current_user
         if field.data and field.data != '':
             if Users.query.filter(Users.email == field.data, Users.id != current_user.get_id()).first():
                 raise ValidationError('Пользователь с таким email уже имеется.')

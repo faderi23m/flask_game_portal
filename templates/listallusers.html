@@ -17,6 +17,9 @@
             <div class="game-title">
                 {{p.name}}
                 {{p.email}}
+                {% if current.role == 'admin' %}
+                    {{p.role}}
+                {% endif %}
             </div>
         </a>
     {% endfor %}

@@ -21,6 +21,12 @@
             <ul class="info-list">
                 <li><span class="label">Имя:</span> {{ user.name }}</li>
                 <li><span class="label">Email:</span> {{ user.email }}</li>
+                {% if current_user.getRole() == 'admin' %}
+                    <li><span class="label">Роль:</span> {{ user.role }}</li>
+                {% endif %}
+                {% if user.about %}
+                    <li><span class="label">Обо мне:</span> {{ user.about }} </li>
+                {% endif %}
             </ul>
         </div>
     </div>

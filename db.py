@@ -43,6 +43,7 @@ class Users(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.Text, nullable=False)
     email = db.Column(db.Text, nullable=False)
+    about = db.Column(db.String(500), nullable=True)
     psw = db.Column(db.Text, nullable=False)
     avatar = db.Column(db.LargeBinary, default=None)
     role = db.Column(db.Text, nullable=False, default='user')
