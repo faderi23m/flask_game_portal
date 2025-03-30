@@ -24,7 +24,7 @@
                 {% if current_user.getRole() == 'admin' %}
                     <li><span class="label">Роль:</span> {{ user.role }}</li>
                 {% endif %}
-                {% if user.about %}
+                {% if user.about != None %}
                     <li><span class="label">Обо мне:</span> {{ user.about }} </li>
                 {% endif %}
             </ul>

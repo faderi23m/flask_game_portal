@@ -497,7 +497,7 @@ def edit_game(game_id):
                         if not link:
                             flash('Ссылка для внешней игры обязательна', 'error')
                             return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру', genres=GENRES)
-                        if Games.query.filter_by(link=link).first():
+                        if Games.query.filter_by(link=link).first().id != game.id:
                             flash('Игра с такой ссылкой уже добавлена', 'error')
                             return render_template('admin/edit_game.html', menu=menu, title='Редактировать игру', genres=GENRES)
                         game.link = link
