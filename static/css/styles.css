@@ -999,7 +999,7 @@ footer a {
 
 .game-name {
     font-weight: bold;
-    font-size: 20px;
+    font-size: 15px;
     color: #129fe6; /* Цвет названия игры как у ссылок */
     margin-bottom: 18px; /* Отступ перед типом игры */
     overflow: hidden; /* Скрываем текст, если он не помещается */
