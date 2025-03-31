@@ -193,12 +193,8 @@ def listgames():
                                  )
         if filter_genre:
             query = query.filter(Games.genre == filter_genre)
-        if filter_type == 'link':
-            query = query.filter(Games.game_type.like('link'))
-        elif filter_type == 'pygame':
-            query = query.filter(Games.game_type.like('pygame'))
-        elif filter_type == 'unity':
-            query = query.filter(Games.game_type.like('unity'))
+        if filter_type:
+            query = query.filter(Games.game_type == filter_type)
         if sort == 'title_asc':
             query = query.order_by(asc(Games.title))
         elif sort == 'title_desc':
