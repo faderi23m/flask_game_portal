@@ -38,7 +38,7 @@ class UserLogin(UserMixin):
         return self.__user.role if self.__user else "Без роли"
 
     def getAbout(self):
-        return  self.__user.about if self.__user else ""
+        return  self.__user.about if self.__user else None
 
     def verifyExt(self, filename):
         ext = filename.rsplit('.', 1)[1]
