@@ -290,7 +290,7 @@ def add_game():
                         flash('Необходимо загрузить архив с игрой', 'error')
                         return render_template('admin/add_game.html', menu=menu, title='Добавить игру', genres=GENRES)
 
-                    pygame_folder = secure_filename(title)
+                    pygame_folder = secure_filename(pygame_zip.filename).rsplit('.',1)[0]
                     #pygame_path = os.path.join('static/games', pygame_folder)
                     pygame_path = os.path.join('flask_game_portal/static/games', pygame_folder)
                     os.makedirs(pygame_path, exist_ok=True)
@@ -325,8 +325,8 @@ def add_game():
                         flash('Необходимо загрузить архив с Unity WebGL игрой', 'error')
                         return render_template('admin/add_game.html', menu=menu, title='Добавить игру')
                     game_folder = secure_filename(unity_zip.filename).rsplit('.', 1)[0]
-                    #game_path = os.path.join('static/games', game_folder)
-                    game_path = os.path.join('flask_game_portal/static/games', game_folder)
+                    game_path = os.path.join('static/games', game_folder)
+                    #game_path = os.path.join('flask_game_portal/static/games', game_folder)
                     os.makedirs(game_path, exist_ok=True)
                     game_zip_path = os.path.join(game_path, 'unity_game.zip')
                     unity_zip.save(game_zip_path)
@@ -507,7 +507,7 @@ def edit_game(game_id):
                         game_zip = request.files.get('game_zip')
                         screenshots_zip = request.files.get('screenshots_zip')
                         if game_zip:  # Обновляем только если загружен новый архив
-                            game_folder = secure_filename(title)
+                            game_folder = secure_filename(pygame_zip.filename).rsplit('.',1)[0]
                             game_path = os.path.join('flask_game_portal/static/games', game_folder)
                             os.makedirs(game_path, exist_ok=True)
 
