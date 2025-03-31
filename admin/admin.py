@@ -267,7 +267,7 @@ def add_game():
                     flash('Игра с таким название уже добавлена', 'error')
                     return render_template('admin/add_game.html', menu=menu, title='Добавить игру', genres=GENRES)
                 cover_data = cover_file.read()
-                new_game = Games(title=title, description=description, cover=cover_data, genre=genre)
+                new_game = Games(title=title, description=description, cover=cover_data, genre=genre, time=int(datetime.now().timestamp()))
 
                 if game_type == 'link':
                     link = request.form.get('link')

@@ -108,12 +108,6 @@ def game(game_id):
         response.set_cookie('game_path', game.link, path='/', samesite='Lax')
     return response
 
-@app.route('/unity')
-@login_required
-def unity():
-    game_path = f'games/{request.cookies.get("game_path")}/index.html'
-    return send_from_directory(os.path.join(app.static_folder), game_path)
-
 @app.route('/pygame')
 @login_required
 def pygame():

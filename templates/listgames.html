@@ -17,6 +17,20 @@
         <div class="game-title">
             {{game.title}}
         </div>
+        <div class="game-meta">
+        <div class="game-type">
+        {% if game.game_type == 'link' %}
+                <img src="{{ url_for('static', filename='images/type/web.png') }}" alt="Web" class="type-icon">
+                <span>Web</span>
+            {% elif game.game_type == 'pygame' %}
+                <img src="{{ url_for('static', filename='images/type/pygame.png') }}" alt="Pygame" class="type-icon">
+                <span>Pygame</span>
+            {% elif game.game_type == 'unity' %}
+                <img src="{{ url_for('static', filename='images/type/unity.png') }}" alt="Unity" class="type-icon">
+                <span>Unity</span>
+            {% endif %}</div>
+        <p class="game-genre">{{game.genre}}</p>
+        </div>
     </a>
     {% endfor %}
 </div>
