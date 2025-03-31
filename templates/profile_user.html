@@ -25,7 +25,7 @@
                     <li><span class="label">Роль:</span> {{ user.role }}</li>
                 {% endif %}
                 {% if user.about != None %}
-                    <li><span class="label">Обо мне:</span> {{ user.about }} </li>
+                    <li><span class="label">Обо мне:</span> {{ user.about | safe }} </li>
                 {% endif %}
             </ul>
         </div>

@@ -27,7 +27,7 @@
                 <li><span class="label">Имя:</span> {{ current_user.getName() }}</li>
                 <li><span class="label">Email:</span> {{ current_user.getEmail() }}</li>
                 {% if current_user.getAbout != None %}
-                    <li><span class="label">Обо мне:</span> {{ current_user.getAbout() }}</li>
+                    <li><span class="label">Обо мне:</span> {{ current_user.getAbout() | safe }}</li>
                 {% endif %}
                 <li></li>
             </ul>
