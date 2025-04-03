@@ -10,7 +10,7 @@
 
 <div class="cards-container">
     {% for game in posts %}
-    <a href="{{url_for('view_post',url=game.url)}}" class="game-card">
+    <a href="{{url_for('view_post',post_id=game.id)}}" class="game-card">
         {% if game.cover %}
         <div class="game-cover"><img src="data:image/jpeg;base64,{{ game.cover|b64encode }}" alt="{{game.title}}"></div>
         {% endif %}

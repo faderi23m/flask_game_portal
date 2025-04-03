@@ -154,10 +154,10 @@ def listposts():
         posts = []
     return render_template('listposts.html', title="Список постов", menu=menu,posts=posts)
 
-@app.route('/post/<string:url>')
+@app.route('/post/<int:post_id>')
 @login_required
-def view_post(url):
-    post = Posts.query.get_or_404(url)
+def view_post(post_id):
+    post = Posts.query.get_or_404(post_id)
     menu = MainMenu.query.all()
     return render_template('view_post.html', title=post.title, post=post)
 

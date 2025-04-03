@@ -8,15 +8,13 @@
 {% endfor %}
 
 <div class="profile-container">
-    <h1>{{game.title}}</h1>
+    <h1>{{post.title}}</h1>
 </div>
 
 
 <div class="game-info-container">
     <div id="game-info" class="game-info">
-        <h2 style="text-align: center">О игре</h2>
-        <hr>
-        <p>{{ game.text | safe }}</p>
+        <p>{{ post.text | safe }}</p>
     </div>
 </div>
 
