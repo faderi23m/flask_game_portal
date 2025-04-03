@@ -1,0 +1,34 @@
+{% extends "admin/base_admin.html" %}
+
+{% block content %}
+{{ super() }}
+{% for cat, msg in get_flashed_messages(True) %}
+<div class="flash {{ cat }}">{{ msg }}</div>
+{% endfor %}
+<div style="position: relative;">
+    <a href="javascript:history.back()" class="add_btn">
+        Вернутся к списку
+    </a>
+</div>
+<div class="form-container">
+    <h1>Редактировать параметры поста: {{ post.title }}</h1>
+    <form method="post" enctype="multipart/form-data">
+        <div class="form-group">
+            <label for="title">Название:</label>
+            <input type="text" name="title" id="title" class="form-input" value="{{ post.title }}" required>
+        </div>
+        <div class="form-group">
+            <label for="description">Текст:</label>
+            <textarea name="description" id="description" class="form-input" rows="16" required>{{ post.text }}</textarea>
+        </div>
+        <div class="form-group">
+            <label for="cover">Обложка (файл):</label>
+            <input type="file" name="cover" id="cover" class="form-input" accept="image/*">
+            {% if post.cover %}
+                <p>Текущая обложка загружена. Загрузите новый файл, если хотите обновить.</p>
+            {% endif %}
+        </div>
+        <button type="submit" class="styled-button">Сохранить изменения</button>
+    </form>
+</div>
+{% endblock %}

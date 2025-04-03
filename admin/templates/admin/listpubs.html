@@ -1,14 +1,55 @@
-{% extends 'admin/base_admin.html' %}
+{% extends "admin/base_admin.html" %}
 
 {% block content %}
 {{ super() }}
-<h1>{{title}}</h1>
-<ul class="list-posts">
-{% for p in list %}
-<li>
-<p class="title"><a href="{{ url_for('ShowPost', post_id=p.url)}}">{{p.title}}</a></p>
-<p class="annonce">{{ p.text[:50] | striptags }}</p>
-</li>
+{% for cat, msg in get_flashed_messages(True) %}
+<div class="flash {{ cat }}">{{ msg }}</div>
 {% endfor %}
+<div style="position: relative;">
+    <a href="{{ url_for('admin.add_post') }}" class="add_btn">Добавить пост</a>
+</div>
+
+<h1>Список постов</h1>
+
+<!-- Форма поиска, сортировки и фильтрации -->
+<div class="form-container" style="margin-bottom: 20px;">
+    <form method="get" action="{{ url_for('admin.listpubs') }}">
+        <div class="form-group">
+            <label for="search">Поиск:</label>
+            <input type="text" name="search" id="search" class="form-input" value="{{ search }}" placeholder="Поиск по названию или описанию">
+        </div>
+        <div class="form-group">
+            <label for="sort">Сортировка:</label>
+            <select name="sort" id="sort" class="form-input">
+                <option value="title_asc" {% if sort == 'title_asc' %}selected{% endif %}>Название (А-Я)</option>
+                <option value="title_desc" {% if sort == 'title_desc' %}selected{% endif %}>Название (Я-А)</option>
+                <option value="time_asc" {% if sort == 'time_asc' %}selected{% endif %}>Дата (старые сначала)</option>
+                <option value="time_desc" {% if sort == 'time_desc' or not sort %}selected{% endif %}>Дата (новые сначала)</option>
+            </select>
+        </div>
+        <button type="submit" class="styled-button">Применить</button>
+    </form>
+</div>
+
+<ul class="list-posts">
+    {% for game in posts %}
+    <li>
+        <p class="title"><a href="{{ game.link }}" target="_blank">{{ game.title }}</a></p>
+        {% if game.cover %}
+        <img src="data:image/jpeg;base64,{{ game.cover|b64encode }}" alt="{{ game.title }}"
+             style="max-width: 150px; max-height: 150px; display: block; margin: 10px 0;">
+        {% endif %}
+        <form action="{{ url_for('admin.edit_post', post_id=game.id) }}" method="get" style="display:inline;">
+            <button type="submit" class="edit-button">Редактировать</button>
+        </form>
+        <form action="{{ url_for('admin.deletepost', post_id=game.id) }}" method="post" style="display:inline;">
+            <button type="submit" class="delete-button">Удалить</button>
+        </form>
+    </li>
+    {% endfor %}
 </ul>
+
+{% if not posts %}
+<p>Посты пока не добавлены или не найдены по заданным критериям.</p>
+{% endif %}
 {% endblock %}

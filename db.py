@@ -32,6 +32,7 @@ class Posts(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title = db.Column(db.Text, nullable=False)
     url = db.Column(db.Text, nullable=False)
+    cover = db.Column(db.LargeBinary, nullable=True)
     text = db.Column(db.Text, nullable=False)
     time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
 
@@ -96,7 +97,8 @@ class Comments(db.Model):
     __tablename__ = 'comments'
     id = db.Column(db.Integer,primary_key=True,autoincrement=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
-    game_id = db.Column(db.Integer, db.ForeignKey('games.id', ondelete='CASCADE'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('games.id', ondelete='CASCADE'), nullable=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id', ondelete='CASCADE'), nullable=True)
     parent_id = db.Column(db.Integer, db.ForeignKey('comments.id', ondelete='CASCADE'), nullable=True)
 
     text = db.Column(db.Text, nullable=False)
@@ -105,6 +107,7 @@ class Comments(db.Model):
 
     user = db.relationship('Users', passive_deletes=True)
     game = db.relationship('Games', backref=db.backref('replies', lazy=True, cascade='all, delete'))
+    post = db.relationship('Posts', backref=db.backref('replies', lazy=True, cascade='all, delete'))
     parent = db.relationship('Comments', remote_side = [id],  backref=db.backref('replies', lazy=True, cascade='all, delete'))
     def __repr__(self):
         return f'<Comments {self.id}, User {self.user_id}, Game {self.game_id}'

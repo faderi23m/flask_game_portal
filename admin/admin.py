@@ -16,6 +16,7 @@ menu = [{'url' : '.index', 'title' : 'Панель'},
         {'url' : '.listusers', 'title' : 'Список пользователей'},
         {'url' : '.listmenu', 'title' : 'Список пунктов меню'},
         {'url' : '.listgames', 'title' : 'Список игр'},
+        {'url' : '.listpubs', 'title' : 'Список постов'},
         {'url' : 'index', 'title' : '/'}]
 
 SECRET_KEY = "6LcPresqAAAAAAz89KkedGqJEDNee9IAcwd5Q0d8"
@@ -222,6 +223,35 @@ def listmenu():
         menus = []
     return render_template('admin/listmenus.html', title='Список пунктов меню', menu=menu, menus=menus)
 
+@admin.route('/list-pubs')
+def listpubs():
+    if not isLogged():
+        return redirect(url_for('.login'))
+    try:
+        search = request.args.get('search', '').strip()
+        sort = request.args.get('sort', 'time_desc')
+        query = Posts.query
+        if search:
+            query = query.filter((Posts.title.ilike(f'%{search}%')) |
+                                 (Posts.text.ilike(f'%{search}%'))
+                                 )
+        if sort == 'title_asc':
+            query = query.order_by(asc(Posts.title))
+        elif sort == 'title_desc':
+            query = query.order_by(desc(Posts.title))
+        elif sort == 'time_asc':
+            query = query.order_by(asc(Posts.time))
+        elif sort == 'time_desc':
+            query = query.order_by(desc(Posts.time))
+        else:
+            query = query.order_by(desc(Posts.time))
+        posts=query.all()
+    except Exception as e:
+        flash('Ошибка получения игр' + str(e),'error')
+        posts = []
+    return render_template('admin/listpubs.html', title='Список игр', menu=menu, posts=posts, search=search, sort=sort)
+
+
 @admin.route('/add_menu', methods=["POST", "GET"])
 def addmenu():
     if not isLogged():
@@ -353,6 +383,40 @@ def add_game():
                 flash(f'Ошибка добавления игры: {str(e)}', 'error')
     return render_template('admin/add_game.html', menu=menu, title='Добавить игру', genres=GENRES)
 
+@admin.route('/add_post', methods=['POST', 'GET'])
+def add_post():
+    if not isLogged():
+        return redirect(url_for('.login'))
+    if request.method == 'POST':
+        title = request.form.get('title')
+        text = request.form.get('description')
+        game_type = request.form.get('game_type')
+        cover_file = request.files.get('cover')
+        genre = request.form.get('genre')
+
+        if not title or not text or not cover_file:
+            flash('Все поля должны быть заполнены', 'error')
+        else:
+            try:
+                url = secure_filename(title.lower().replace(' ','-'))
+                existing_post = Posts.query.filter_by(url=url).first()
+                if existing_post:
+                    url = f'{url}-{int(datetime.now().timestamp())}'
+                if Posts.query.filter_by(title=title).first():
+                    flash('Пост с таким название уже существует')
+                    return render_template('admin/add_post.html', menu=menu, title='Добавить пост')
+                cover_data = cover_file.read()
+                new_post = Posts(title=title, url=url, text=text, cover=cover_data,
+                                 time=int(datetime.now().timestamp()))
+                db.session.add(new_post)
+                db.session.commit()
+                flash('Пост успешно добавлен', 'success')
+                return redirect(url_for('.listpubs'))
+            except Exception as e:
+                db.session.rollback()
+                flash(f'Ошибка добавления поста: {str(e)}', 'error')
+    return render_template('admin/add_post.html', menu=menu, title='Добавить пост')
+
 @admin.route('/delete_user/<int:user_id>', methods=["POST", "GET"])
 def deleteuser(user_id):
     if not isLogged():
@@ -370,6 +434,25 @@ def deleteuser(user_id):
         print(f'Ошибка удаления пользователя {e}')
         flash(f'Ошибка удаления пользователя {e}', 'error')
     return redirect(url_for('.listusers'))
+
+@admin.route('/delete_post/<int:post_id>', methods=["POST", "GET"])
+def deletepost(post_id):
+    if not isLogged():
+        return redirect(url_for('login'))
+    try:
+        post = Posts.query.get(post_id)
+        if post:
+            db.session.delete(post)
+            db.session.commit()
+            flash('Пост удален','success')
+        else:
+            flash('Ошибка получения поста из бд','error')
+    except Exception as e:
+        db.session.rollback()
+        print(f'Ошибка удаления поста {e}')
+        flash(f'Ошибка удаления поста {e}', 'error')
+    return redirect(url_for('.listpubs'))
+
 
 @admin.route('/delete_game/<int:game_id>', methods=["POST", "GET"])
 def deletegame(game_id):
@@ -455,6 +538,44 @@ def editmenu(menu_id):
                 print(f'Ошибка изменения {e}')
                 flash(f'Ошибка изменения {e}','error')
     return render_template('admin/edit_mainmenus.html',menu = menu,title='Редактировать пункт меню', menu_list=menu_list)
+
+@admin.route('/edit_post/<int:post_id>', methods=['POST', 'GET'])
+def edit_post(post_id):
+    if not isLogged():
+        return redirect(url_for('.login'))
+    menu_list = Posts.query.get(post_id)
+    if not menu_list:
+        flash('Пост не найден', 'error')
+        return redirect(url_for('.listpubs'))
+    if request.method == "POST":
+        title = request.form.get('title')
+        text = request.form.get('description')
+        cover = request.files.get('cover')
+        if not title or not text:
+            flash('Все поля должны быть заполнены', 'error')
+            return render_template('admin/edit_post.html', menu=menu, title='Изменить пост', post=menu_list)
+        try:
+            new_url = secure_filename(title.lower().replace(' ','-'))
+            existing_post_url = Posts.query.filter_by(url=new_url).first()
+            if existing_post_url and existing_post_url.id != post_id:
+                new_url = f'{new_url}-{int(datetime.now().timestamp())}'
+            existing_post = Posts.query.filter_by(title=title).first()
+            if existing_post and existing_post.id != post_id:
+                flash('Пост с таким названием уже существует','error')
+                return render_template('admin/edit_post.html', menu=menu, title='Изменить пост', post=menu_list)
+            menu_list.title = title
+            menu_list.text = text
+            if cover and cover.filename:
+                cover_data = cover.read()
+                menu_list.cover = cover_data
+            db.session.commit()
+            flash('Пост изменен', "succes")
+            return redirect(url_for('.listpubs'))
+        except Exception as e:
+            print(f'Ошибка изменения {e}')
+            flash(f'Ошибка изменения {e}', 'error')
+    return render_template('admin/edit_post.html', menu=menu, title='Изменить пост', post=menu_list)
+
 
 @admin.route('/edit_game/<int:game_id>', methods=["POST", "GET"])
 def edit_game(game_id):
