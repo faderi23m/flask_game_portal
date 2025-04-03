@@ -143,6 +143,24 @@ def listgames():
         games = []
     return render_template('listgames.html', title="Список игр", menu=menu,games=games)
 
+@app.route('/listposts', methods=["POST", "GET"])
+@login_required
+def listposts():
+    menu = MainMenu.query.all()
+    try:
+        posts = Posts.query.all()
+    except Exception as e:
+        flash(f"Ошибка получения списка игр {str(e)}","error")
+        posts = []
+    return render_template('listposts.html', title="Список постов", menu=menu,posts=posts)
+
+@app.route('/post/<string:url>')
+@login_required
+def view_post(url):
+    post = Posts.query.get_or_404(url)
+    menu = MainMenu.query.all()
+    return render_template('view_post.html', title=post.title, post=post)
+
 @app.errorhandler(404)
 def page_not_found(error):
     return render_template('page404.html', title='Страница не найдена', menu=MainMenu.query.all())
