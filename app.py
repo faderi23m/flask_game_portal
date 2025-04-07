@@ -248,7 +248,7 @@ def get_comments(game_id):
 
 @app.route('/game/<int:game_id>/comment', methods=['POST'])
 @login_required
-def add_comment(game_id):
+def add_comment_game(game_id):
     data = request.json
     text = data.get('text', '').strip()
     parent_id = data.get('parent_id')  # ID родительского комментария (если есть)
@@ -259,6 +259,26 @@ def add_comment(game_id):
     comment = Comments(
         user_id=current_user.get_id(),
         game_id=game_id,
+        text=text,
+        parent_id=parent_id  # Привязываем к родительскому комментарию
+    )
+    db.session.add(comment)
+    db.session.commit()
+    return {"message": "Комментарий добавлен"}
+
+@app.route('/post/<int:post_id>/comment', methods=['POST'])
+@login_required
+def add_comment_post(post_id):
+    data = request.json
+    text = data.get('text', '').strip()
+    parent_id = data.get('parent_id')  # ID родительского комментария (если есть)
+
+    if not text:
+        return {"error": "Комментарий не может быть пустым"}, 400
+
+    comment = Comments(
+        user_id=current_user.get_id(),
+        post_id=post_id,
         text=text,
         parent_id=parent_id  # Привязываем к родительскому комментарию
     )
