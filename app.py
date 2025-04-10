@@ -90,9 +90,10 @@ def index():
     menu = MainMenu.query.all()
     try:
         games = Games.query.all()
+        posts = Posts.query.all()
     except Exception as e:
         print(e)
-    return render_template('index.html', menu=menu, user=current_user, games=games)
+    return render_template('index.html', menu=menu, user=current_user, games=games, posts=posts)
 
 @app.route('/game/<int:game_id>')
 @login_required

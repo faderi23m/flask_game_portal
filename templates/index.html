@@ -15,7 +15,7 @@
 <div class="cards-container">
     {% for game in games %}
     {% if game.game_type == 'pygame' %}
-    <a class="game-card">
+    <a class="game-card" href="{{url_for('game',game_id=game.id)}}">
         {% if game.cover %}
         <div class="game-cover"><img src="data:image/jpeg;base64,{{ game.cover|b64encode }}" alt="{{game.title}}"></div>
         {% endif %}
@@ -27,6 +27,19 @@
         </div>
     </a>
     {% endif %}
+    {% endfor %}
+</div>
+<h2> Наши <a href="{{url_for('listposts')}}">посты</a>.</h2>
+<div class="cards-container">
+    {% for post in posts %}
+    <a class="game-card" href="{{url_for('view_post',post_id=post.id)}}">
+        {% if post.cover %}
+        <div class="game-cover"><img src="data:image/jpeg;base64,{{ post.cover|b64encode }}" alt="{{post.title}}"></div>
+        {% endif %}
+        <div class="game-name">
+            {{post.title}}
+        </div>
+    </a>
     {% endfor %}
 </div>
 

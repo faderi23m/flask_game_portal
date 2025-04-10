@@ -15,8 +15,8 @@
 <ul class="list-posts">
 {% for p in menus %}
 <li>
-<a href="{{p.url}}"><p class="title">{{ p.title }}</p></a>
-<p class="link">{{ p.url }}</p>
+<a href="{{p.url}}"><p class="title">Название: {{ p.title }}</p></a>
+<p class="link">Ссылка: {{ p.url }}</p>
 <form action="{{ url_for('admin.editmenu', menu_id=p.id) }}" method="post" style="display:inline;">
 <button type="submit" class="edit-button">Редактировать</button>
 </form>
