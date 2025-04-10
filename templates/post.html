@@ -8,13 +8,14 @@
 {% endfor %}
 
 <div class="profile-container">
-    <h1>{{post.title}}</h1>
+    <h1>{{ post.title }}</h1>
 </div>
 
-
-<div class="game-info-container">
-    <div id="game-info" class="game-info">
-        <p>{{ post.text | safe }}</p>
+<div class="post-layout">
+    <div class="post-content-container">
+        <div class="post-text">
+            <p>{{ post.text | safe }}</p>
+        </div>
     </div>
 </div>
 
@@ -28,5 +29,10 @@
     <div id="comments-container"></div>
 </div>
 
-<script src="{{url_for('static', filename='js/coments.js')}}" rel="javascript"></script>
+<script>
+    window.entityId = {{ post.id }};
+    window.entityType = "post";
+</script>
+<script src="{{ url_for('static', filename='js/comments.js') }}" rel="javascript"></script>
+
 {% endblock %}

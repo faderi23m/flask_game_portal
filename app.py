@@ -150,7 +150,7 @@ def listposts():
     try:
         posts = Posts.query.all()
     except Exception as e:
-        flash(f"Ошибка получения списка игр {str(e)}","error")
+        flash(f"Ошибка получения спискапостов {str(e)}","error")
         posts = []
     return render_template('listposts.html', title="Список постов", menu=menu,posts=posts)
 
@@ -159,7 +159,7 @@ def listposts():
 def view_post(post_id):
     post = Posts.query.get_or_404(post_id)
     menu = MainMenu.query.all()
-    return render_template('view_post.html', title=post.title, post=post)
+    return render_template('post.html', title=post.title, post=post, menu=menu)
 
 @app.errorhandler(404)
 def page_not_found(error):
@@ -228,8 +228,28 @@ def upload():
 
 @app.route('/game/<int:game_id>/comments')
 @login_required
-def get_comments(game_id):
-    comments = Comments.query.filter_by(game_id=game_id, parent_id = None).order_by(Comments.timestamp.desc()).all()
+def get_game_comments(game_id):
+    comments = Comments.query.filter_by(game_id=game_id, post_id=None, parent_id = None).order_by(Comments.timestamp.desc()).all()
+    current_user_id = int(current_user.get_id())
+
+    def serialize_comment(comment):
+        return {
+                "id": comment.id,
+                "user": comment.user.name,
+                "avatar": f'data:image/png;base64, {base64.b64encode(comment.user.avatar).decode("utf-8")}' if comment.user.avatar else None,
+                "text": comment.text,
+                "timestamp": comment.timestamp.strftime('%Y-%m-%d %H:%M'),
+                "likes": comment.likes,
+                "is_owner": comment.user_id == current_user_id,
+                "replies": [serialize_comment(reply) for reply in comment.replies]
+            }
+    comments_data = [serialize_comment(comment) for comment in comments]
+    return {"comments":comments_data}
+
+@app.route('/post/<int:post_id>/comments')
+@login_required
+def get_post_comments(post_id):
+    comments = Comments.query.filter_by(game_id=None, post_id=post_id, parent_id = None).order_by(Comments.timestamp.desc()).all()
     current_user_id = int(current_user.get_id())
 
     def serialize_comment(comment):
@@ -259,6 +279,7 @@ def add_comment_game(game_id):
     comment = Comments(
         user_id=current_user.get_id(),
         game_id=game_id,
+        post_id=None,
         text=text,
         parent_id=parent_id  # Привязываем к родительскому комментарию
     )
@@ -279,6 +300,7 @@ def add_comment_post(post_id):
     comment = Comments(
         user_id=current_user.get_id(),
         post_id=post_id,
+        game_id=None,
         text=text,
         parent_id=parent_id  # Привязываем к родительскому комментарию
     )
