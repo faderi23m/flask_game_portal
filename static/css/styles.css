@@ -15,7 +15,8 @@ html, body {
 }
 @font-face {
     font-family: 'Monocraft';
-    src: url('/static/fonts/Monocraft.otf') format('truetype');
+    src: url('flask_game_portal/static/fonts/Monocraft.otf') format('truetype');
+    """src: url('/static/fonts/Monocraft.otf') format('truetype');"""
     font-weight: normal;
     font-style: normal;
 }
