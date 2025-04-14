@@ -54,3 +54,18 @@ class EditProfileForm(FlaskForm):
         if field.data and field.data != '':
             if Users.query.filter(Users.email == field.data, Users.id != current_user.get_id()).first():
                 raise ValidationError('Пользователь с таким email уже имеется.')
+
+class ForgotPasswordForm(FlaskForm):
+    email = StringField('Email', validators=[DataRequired(), Email()])
+    submit = SubmitField('Отправить письмо')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField('Новый пароль', validators=[
+        DataRequired(),
+        Length(min=6, message="Пароль должен содержать минимум 6 символов")
+    ])
+    password_confirm = PasswordField('Подтвердите пароль', validators=[
+        DataRequired(),
+        EqualTo('password', message="Пароли должны совпадать")
+    ])
+    submit = SubmitField('Сбросить пароль')

@@ -4,12 +4,16 @@ from flask import Flask, render_template, url_for, request, flash, session, redi
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from datetime import datetime
+from datetime import datetime,timedelta,timezone
 from flask_migrate import Migrate
+
+import db
 from db import *
 from forms import *
 from UserLogin import UserLogin
 from admin.admin import admin
+from flask_mail import Mail, Message
+import secrets
 
 
 # конфигурация
@@ -26,6 +30,13 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(app.root_path,
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = SECRET_KEY
 
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = 'arsenijsng@gmail.com'
+app.config['MAIL_PASSWORD'] = 'batydgxkcbbhbbaj'
+app.config['MAIL_DEFAULT_SENDER'] = 'arsenijsng@gmail.com'
+
 app.config['RECAPTCHA_PUBLIC_KEY'] = "6LcPresqAAAAAAz89KkedGqJEDNee9IAcwd5Q0d8" # Ключ сайта
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LcPresqAAAAALdpmlLKj_9V9f_EcUcmc4PQuK5k'
 app.config['RECAPTCHA_OPTIONS'] = {'theme':'light'}
@@ -34,6 +45,7 @@ app.config['RECAPTCHA_OPTIONS'] = {'theme':'light'}
 app.app_context().push()
 db.init_app(app)
 migrate = Migrate(app, db)
+mail = Mail(app)
 app.register_blueprint(admin, url_prefix='/admin')
 
 login_manager = LoginManager(app=app)
@@ -43,7 +55,22 @@ login_manager.login_message = 'Авторизируйтесь для досту�
 
 app.config['SECRET_KEY'] = '494bd8adc9999e7697aa141a5b4486e16b643027'
 
+def generate_token():
+    return secrets.token_urlsafe(32)
 
+def send_confirmation_email(user_email,token):
+    confirm_url = url_for('confirm_email',token=token, _external=True)
+    msg = Message("Подтверждение регистрации", recipients=[user_email])
+    msg.body = f"Перейдите по ссылке для подтверждения регистрации: {confirm_url}"
+    msg.html = f"<p>Перейдите по ссылке для подтверждения регистрации: <a href='{confirm_url}'>{confirm_url}</a></p>"
+    mail.send(msg)
+
+def send_reset_password_email(user_email,token):
+    reset_url = url_for('reset_password',token=token, _external=True)
+    msg = Message("Сброс пароля", recipients=[user_email])
+    msg.body = f"Перейдите по ссылке для сброса пароля: {reset_url}"
+    msg.html = f"<p>Перейдите по ссылке для сброса пароля: <a href='{reset_url}'>{reset_url}</a></p>"
+    mail.send(msg)
 
 @app.before_request
 def create_table():
@@ -93,6 +120,8 @@ def index():
         posts = Posts.query.all()
     except Exception as e:
         print(e)
+        games = []
+        posts = []
     return render_template('index.html', menu=menu, user=current_user, games=games, posts=posts)
 
 @app.route('/game/<int:game_id>')
@@ -191,14 +220,19 @@ def login():
 def register():
     form = RegisterForm()
     if form.validate_on_submit():
-            hash_psw = generate_password_hash(form.psw.data)
-            new_user = Users(name = form.name.data, email = form.email.data, psw = hash_psw, time=int(datetime.now().timestamp()))
-            db.session.add(new_user)
-            db.session.commit()
-            flash("Вы успешно зарегистрированы", "success")
-            userLogin = UserLogin().create(new_user)
-            login_user(userLogin, remember=False)
-            return redirect(url_for('profile'))
+        hash_psw = generate_password_hash(form.psw.data)
+        new_user = Users(name = form.name.data, email = form.email.data, psw = hash_psw, time=int(datetime.now(timezone.utc).timestamp()))
+        db.session.add(new_user)
+        db.session.flush()
+
+        token = generate_token()
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        confirmation_token = Token(user_id=new_user.id, token=token, type="email.confirmation",expires_at=expires_at)
+        db.session.add(confirmation_token)
+        db.session.commit()
+        send_confirmation_email(new_user.email,token)
+        flash("Письмо с подтверждением отправлено на вашу почту", "success")
+        return redirect(url_for('login'))
 
     return render_template("register.html", menu=MainMenu.query.all(), title="Регистрация", form=form)
 
@@ -226,6 +260,81 @@ def upload():
         else:
             flash('Ошибка обновления аватара', 'error')
     return redirect(url_for('profile'))
+
+@app.route('/confirm_email/<token>')
+def confirm_email(token):
+    token_record = Token.query.filter_by(token=token, type='email_confirmation').first()
+    if not token_record:
+        flash("Ссылка недействительна.",'error')
+        return redirect(url_for('register'))
+    expires_at_aware = token_record.expires_at.replace(tzinfo=timezone.utc)
+    if expires_at_aware < datetime.now(timezone.utc):
+        flash('Срок действия ссылки истек.','error')
+        db.session.delete(token_record)
+        db.session.commit()
+        return redirect(url_for('register'))
+    user = Users.query.get(token_record.user_id)
+    if not user:
+        flash('Пользователь не найден.','error')
+        db.session.delete(token_record)
+        db.session.commit()
+        return redirect(url_for('register'))
+    flash('Ваша учетная запись успешно подтверждена!','error')
+    db.session.delete(token_record)
+    db.session.commit()
+    return redirect(url_for('profile'))
+
+@app.route("/reset_password/<token>", methods=["POST", "GET"])
+def reset_password(token):
+    token_record = Token.query.filter_by(token=token, type="password_reset").first()
+    if not token_record:
+        flash("Ссылка недействительна.", "error")
+        return redirect(url_for('forgot_password'))
+
+    # Предполагаем, что expires_at в базе хранится как UTC, делаем его "осведомленным"
+    expires_at_aware = token_record.expires_at.replace(tzinfo=timezone.utc)
+    if expires_at_aware < datetime.now(timezone.utc):
+        flash("Срок действия ссылки истек.", "error")
+        return redirect(url_for('forgot_password'))
+
+    form = ResetPasswordForm()
+    if form.validate_on_submit():
+        user = Users.query.get(token_record.user_id)
+        if user:
+            user.psw = generate_password_hash(form.password.data)
+            db.session.delete(token_record)
+            db.session.commit()
+            flash("Пароль успешно изменен. Войдите с новым паролем.", "success")
+            return redirect(url_for('login'))
+        else:
+            flash("Пользователь не найден.", "error")
+
+    return render_template("reset_password.html", menu=MainMenu.query.all(), title="Сброс пароля", form=form, token=token)
+# Маршрут для формы "Забыл пароль"
+@app.route("/forgot_password", methods=["POST", "GET"])
+def forgot_password():
+    form = ForgotPasswordForm()
+    if form.validate_on_submit():
+        user = Users.query.filter_by(email=form.email.data.lower()).first()
+        if user:
+            token = generate_token()
+            expires_at = datetime.now(timezone.utc) + timedelta(hours=1)  # Токен действителен 1 час
+            reset_token = Token(
+                user_id=user.id,
+                token=token,
+                type="password_reset",
+                expires_at=expires_at
+            )
+            db.session.add(reset_token)
+            db.session.commit()
+
+            send_reset_password_email(user.email, token)
+            flash("Письмо для сброса пароля отправлено на вашу почту.", "success")
+        else:
+            flash("Пользователь с такой почтой не найден.", "error")
+        return redirect(url_for('login'))
+
+    return render_template("forgot_password.html", menu=MainMenu.query.all(), title="Восстановление пароля", form=form)
 
 @app.route('/game/<int:game_id>/comments')
 @login_required
