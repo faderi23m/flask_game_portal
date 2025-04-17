@@ -1,7 +1,7 @@
 import time,re,zipfile,os,shutil,hmac,hashlib
 from flask import Blueprint, render_template, url_for, redirect, session, request, flash, g
 from werkzeug.security import check_password_hash, generate_password_hash
-from db import db, Posts, Users, Games, MainMenu, Comments
+from db import *
 from datetime import datetime,timedelta
 from sqlalchemy import func, asc, desc
 from werkzeug.utils import secure_filename
