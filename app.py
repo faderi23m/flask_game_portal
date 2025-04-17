@@ -231,7 +231,7 @@ def register():
     form = RegisterForm()
     if form.validate_on_submit():
         hash_psw = generate_password_hash(form.psw.data)
-        new_user = Users(name = form.name.data, email = form.email.data, psw = hash_psw, time=int(datetime.now(timezone.utc).timestamp()))
+        new_user = Users(name = form.name.data, email = form.email.data, psw = hash_psw, time=int(datetime.now(timezone.utc).timestamp()), is_active=False)
         db.session.add(new_user)
         db.session.flush()
 
