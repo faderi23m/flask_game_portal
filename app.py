@@ -207,17 +207,21 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = Users.query.filter_by(email=form.email.data).first()
-        if user and check_password_hash(user.psw, form.psw.data):
-            userlogin = UserLogin().create(user)
-            login_user(userlogin, remember=form.remember.data)
-            return redirect(request.args.get("next") or url_for("profile"))
-
-        flash("Неверная пара логин/пароль", "error")
+        if user.is_active:
+            if user and check_password_hash(user.psw, form.psw.data):
+                userlogin = UserLogin().create(user)
+                login_user(userlogin, remember=form.remember.data)
+                return redirect(request.args.get("next") or url_for("profile"))
+            flash("Неверная пара логин/пароль", "error")
+        else:
+            flash("Учетная запись не подтверждена","error")
 
     return render_template("login.html", menu=MainMenu.query.all(), title="Авторизация", form=form)
 
 @app.route("/register", methods=["POST", "GET"])
 def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('profile'))
     form = RegisterForm()
     if form.validate_on_submit():
         hash_psw = generate_password_hash(form.psw.data)
@@ -227,7 +231,7 @@ def register():
 
         token = generate_token()
         expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
-        confirmation_token = Token(user_id=new_user.id, token=token, type="email.confirmation",expires_at=expires_at)
+        confirmation_token = Token(user_id=new_user.id, token=token, type="email_confirmation",expires_at=expires_at)
         db.session.add(confirmation_token)
         db.session.commit()
         send_confirmation_email(new_user.email,token)
@@ -279,10 +283,11 @@ def confirm_email(token):
         db.session.delete(token_record)
         db.session.commit()
         return redirect(url_for('register'))
-    flash('Ваша учетная запись успешно подтверждена!','error')
+    user.is_active = True
+    flash('Ваша учетная запись успешно подтверждена!','success')
     db.session.delete(token_record)
     db.session.commit()
-    return redirect(url_for('profile'))
+    return redirect(url_for('login'))
 
 @app.route("/reset_password/<token>", methods=["POST", "GET"])
 def reset_password(token):

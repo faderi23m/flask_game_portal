@@ -47,6 +47,7 @@ class Users(db.Model):
     about = db.Column(db.String(500), nullable=True)
     psw = db.Column(db.Text, nullable=False)
     avatar = db.Column(db.LargeBinary, default=None)
+    is_active = db.Column(db.Boolean,nullable=False,default=False)
     role = db.Column(db.Text, nullable=False, default='user')
     time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
 
