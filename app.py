@@ -295,6 +295,8 @@ def reset_password(token):
     expires_at_aware = token_record.expires_at.replace(tzinfo=timezone.utc)
     if expires_at_aware < datetime.now(timezone.utc):
         flash("Срок действия ссылки истек.", "error")
+        db.session.delete(token_record)
+        db.session.commit()
         return redirect(url_for('forgot_password'))
 
     form = ResetPasswordForm()
