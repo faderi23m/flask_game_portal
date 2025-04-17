@@ -78,12 +78,12 @@ def create_table():
         db.create_all()
         g._tables_created = True
 
-@app.before_request
+"""@app.before_request
 def check_active():
     if not current_user.is_active:
         logout_user()
         flash("Учетная запись не подтверждена","error")
-        return redirect(url_for('login'))
+        return redirect(url_for('login'))"""
 
 @app.before_request
 def check_user_in_db():
