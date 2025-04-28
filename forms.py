@@ -62,7 +62,7 @@ class ForgotPasswordForm(FlaskForm):
 class ResetPasswordForm(FlaskForm):
     password = PasswordField('Новый пароль', validators=[
         DataRequired(),
-        Length(min=6, message="Пароль должен содержать минимум 6 символов")
+        Length(min=4,max=100, message="Пароль должен содержать от 4 до 100 символов")
     ])
     password_confirm = PasswordField('Подтвердите пароль', validators=[
         DataRequired(),

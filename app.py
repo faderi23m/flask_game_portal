@@ -14,7 +14,9 @@ from UserLogin import UserLogin
 from admin.admin import admin
 from flask_mail import Mail, Message
 import secrets
-
+from config import *
+from apscheduler.schedulers.background import BackgroundScheduler
+import logging
 
 # конфигурация
 DATABASE = '/tmp/flask.db'
@@ -30,12 +32,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{os.path.join(app.root_path,
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = SECRET_KEY
 
-app.config['MAIL_SERVER'] = 'smtp.gmail.com'
-app.config['MAIL_PORT'] = 587
-app.config['MAIL_USE_TLS'] = True
-app.config['MAIL_USERNAME'] = 'arsenijsng@gmail.com'
-app.config['MAIL_PASSWORD'] = 'batydgxkcbbhbbaj'
-app.config['MAIL_DEFAULT_SENDER'] = 'arsenijsng@gmail.com'
+app.config.update(MAIL_CONFIG)
 
 app.config['RECAPTCHA_PUBLIC_KEY'] = "6LcPresqAAAAAAz89KkedGqJEDNee9IAcwd5Q0d8" # Ключ сайта
 app.config['RECAPTCHA_PRIVATE_KEY'] = '6LcPresqAAAAALdpmlLKj_9V9f_EcUcmc4PQuK5k'
@@ -43,9 +40,9 @@ app.config['RECAPTCHA_OPTIONS'] = {'theme':'light'}
 
 
 app.app_context().push()
+mail = Mail(app)
 db.init_app(app)
 migrate = Migrate(app, db)
-mail = Mail(app)
 app.register_blueprint(admin, url_prefix='/admin')
 
 login_manager = LoginManager(app=app)
@@ -72,6 +69,53 @@ def send_reset_password_email(user_email,token):
     msg.html = f"<p>Перейдите по ссылке для сброса пароля: <a href='{reset_url}'>{reset_url}</a></p>"
     mail.send(msg)
 
+def clear_inactive_users():
+    try:
+        with app.app_context():
+            now = datetime.now(timezone.utc)
+            expired_tokens = Token.query.filter(
+                Token.type=='email_confirmation',
+                Token.expires_at < now
+            ).all()
+            deleted_users = 0
+            deleted_tokens = 0
+            for token in expired_tokens:
+                user = Users.query.get(token.user_id)
+                if user and not user.is_active:
+                    Token.query.filter_by(user_id=user.id).delete()
+                    db.session.delete(user)
+                    deleted_users+=1
+                deleted_tokens+=1
+            db.session.commit()
+            logging.info(f'Cleaned {deleted_users} inactive users and {deleted_tokens} expired tokens')
+            return {"users_deleted":deleted_users,"tokens_deleted":deleted_tokens}
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f'Error cleaning inactive users: {str(e)}')
+        return {"error":str(e)}
+
+
+def clear_inactive_tokens():
+    try:
+        with app.app_context():
+            now = datetime.now(timezone.utc)
+            expired_tokens = Token.query.filter(
+                Token.type=='password_reset',
+                Token.expires_at < now
+            ).all()
+            deleted_tokens = 0
+            for token in expired_tokens:
+                Token.query.filter_by(type='password_reset',user_id=token.user_id).delete()
+                deleted_tokens+=1
+            db.session.commit()
+            logging.info(f'Cleaned {deleted_tokens} expired tokens')
+            return {"tokens_deleted":deleted_tokens}
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f'Error cleaning inactive users: {str(e)}')
+        return {"error":str(e)}
+
+
 @app.before_request
 def create_table():
     if not hasattr(g, '_tables_created'):
@@ -95,6 +139,23 @@ def b64encode(data):
     if data is None:
         return ''
     return base64.b64encode(data).decode('utf-8')
+
+
+@app.template_filter('format_time')
+def format_time(seconds):
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    seconds = seconds % 60
+    if hours > 0:
+        return f"{hours}ч {minutes}м {seconds}с"
+    elif minutes > 0:
+        return f"{minutes}м {seconds}с"
+    else:
+        return f"{seconds}с"
+
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    return datetime.fromtimestamp(value, tz=timezone.utc).strftime('%Y-%m-%d %H:%M')
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -128,6 +189,7 @@ def index():
 def game(game_id):
     game = Games.query.get_or_404(game_id)
     menu = MainMenu.query.all()
+    is_favorite = Favorites.query.filter_by(user_id=current_user.get_id(),game_id=game_id).first()
     response = make_response(render_template('game.html', menu=menu, title=game.title, game=game))
     if game.game_type == 'link':
         response.set_cookie('game_path', '', path='/', samesite='Lax')  # Нет пути для внешних ссылок
@@ -167,10 +229,12 @@ def listgames():
     menu = MainMenu.query.all()
     try:
         games = Games.query.all()
+        favorite_game_ids = [fav.game_id for fav in Favorites.query.filter_by(user_id=current_user.get_id()).all()]
     except Exception as e:
         flash(f"Ошибка получения списка игр {str(e)}","error")
         games = []
-    return render_template('listgames.html', title="Список игр", menu=menu,games=games)
+        favorite_game_ids = []
+    return render_template('listgames.html', title="Список игр", menu=menu,games=games,favorite_game_ids=favorite_game_ids)
 
 @app.route('/listposts', methods=["POST", "GET"])
 @login_required
@@ -206,16 +270,57 @@ def login():
     form = LoginForm()
     if form.validate_on_submit():
         user = Users.query.filter_by(email=form.email.data).first()
-        if user.is_active:
-            if user and check_password_hash(user.psw, form.psw.data):
-                userlogin = UserLogin().create(user)
-                login_user(userlogin, remember=form.remember.data)
-                return redirect(request.args.get("next") or url_for("profile"))
-            flash("Неверная пара логин/пароль", "error")
-        else:
-            flash("Учетная запись не подтверждена","error")
+        if user:
+            if user.is_active:
+                if check_password_hash(user.psw, form.psw.data):
+                    userlogin = UserLogin().create(user)
+                    login_user(userlogin, remember=form.remember.data)
+                    return redirect(request.args.get("next") or url_for("profile"))
+                flash("Неверная пара логин/пароль", "error")
+            else:
+                flash("Учетная запись не подтверждена","error")
 
     return render_template("login.html", menu=MainMenu.query.all(), title="Авторизация", form=form)
+
+@app.route('/game/<int:game_id>/track_time',methods=['POST'])
+@login_required
+def track_time(game_id):
+    data = request.json
+    time_spent = data.get('time_spent',0)
+    if not isinstance(time_spent,int) or time_spent < 0:
+        return {'error' : 'Некорректное время'}, 400
+    stat = GameStats.query.filter_by(user_id= current_user.get_id(),game_id=game_id).first()
+    if stat:
+        stat.time_spent += time_spent
+        stat.last_played = datetime.now(timezone.utc)
+    else:
+        stat = GameStats(
+            user_id=current_user.get_id(),
+            game_id=game_id,
+            time_spent=time_spent,
+            last_played=datetime.now(timezone.utc)
+        )
+        db.session.add(stat)
+    db.session.commit()
+    return {"message" : "Время обновлено"}
+
+@app.route('/game/<int:game_id>/favorite', methods=['POST'])
+@login_required
+def toggle_favorite(game_id):
+    favorite = Favorites.query.filter_by(game_id=game_id,user_id=current_user.get_id()).first()
+    if favorite:
+        db.session.delete(favorite)
+        db.session.commit()
+        return {"message" : "Игра удалена из избранного", "is_favorite" : False}
+    else:
+        new_favorite = Favorites(
+            user_id = current_user.get_id(),
+            game_id=game_id,
+            added_at = datetime.now(timezone.utc)
+        )
+        db.session.add(new_favorite)
+        db.session.commit()
+        return {"message" : "Игра добавлена в избранное", "is_favorite" : True}
 
 @app.route("/register", methods=["POST", "GET"])
 def register():
@@ -244,26 +349,6 @@ def register():
 def logout():
     logout_user()
     return redirect(url_for('index'))
-
-@app.route('/upload', methods=['POST', 'GET'])
-@login_required
-def upload():
-    if request.method == 'POST':
-        file = request.files['file']
-        if file and current_user.verifyExt(file.filename):
-            try:
-                img = file.read()
-                success = Users.updateUserAvatar(img, current_user.get_id())
-                if not success:
-                    flash('Ошибка обновления аватара', 'error')
-                else:
-                    flash('Аватар обновлен', 'success')
-            except FileNotFoundError as e:
-                flash('Ошибка чтения файла', 'error')
-        else:
-            flash('Ошибка обновления аватара', 'error')
-    return redirect(url_for('profile'))
-
 @app.route('/confirm_email/<token>')
 def confirm_email(token):
     token_record = Token.query.filter_by(token=token, type='email_confirmation').first()
@@ -352,6 +437,7 @@ def get_game_comments(game_id):
         return {
                 "id": comment.id,
                 "user": comment.user.name,
+                "user_id":comment.user_id,
                 "avatar": f'data:image/png;base64, {base64.b64encode(comment.user.avatar).decode("utf-8")}' if comment.user.avatar else None,
                 "text": comment.text,
                 "timestamp": comment.timestamp.strftime('%Y-%m-%d %H:%M'),
@@ -372,6 +458,7 @@ def get_post_comments(post_id):
         return {
                 "id": comment.id,
                 "user": comment.user.name,
+                "user_id": comment.user_id,
                 "avatar": f'data:image/png;base64, {base64.b64encode(comment.user.avatar).decode("utf-8")}' if comment.user.avatar else None,
                 "text": comment.text,
                 "timestamp": comment.timestamp.strftime('%Y-%m-%d %H:%M'),
@@ -454,7 +541,9 @@ def delete_comment(comment_id):
 @app.route('/profile')
 @login_required
 def profile():
-    return render_template('profile.html', title="Профиль", menu = MainMenu.query.all())
+    stats = GameStats.query.filter_by(user_id=current_user.get_id()).order_by(GameStats.last_played.desc()).all()
+    favorites = Favorites.query.filter_by(user_id=current_user.get_id()).order_by(Favorites.added_at.desc()).all()
+    return render_template('profile.html', title="Профиль", menu = MainMenu.query.all(),stats=stats,favorites=favorites,user=current_user)
 
 @app.route('/edit_profile', methods=['POST','GET'])
 @login_required
@@ -495,14 +584,19 @@ def edit_profile():
 @app.route('/list_all_users')
 @login_required
 def list_all_users():
-    users = Users.query.all()
+    users = Users.query.filter_by(is_active=True).all()
     return render_template('listallusers.html', menu=MainMenu.query.all(), title='Список зарегестрированных людей', users=users, current=current_user)
 
 @app.route('/profile_user/<int:user_id>')
 @login_required
 def profile_user(user_id):
     user = Users.query.filter_by(id=user_id).first()
-    return render_template('profile_user.html', menu=MainMenu.query.all(), title='Просмотр профиля пользователя', user=user)
+    if not user.is_active:
+        return redirect(url_for('list_all_users'))
+        flash("Пользователь не активирован", 'error')
+    stats = GameStats.query.filter_by(user_id=current_user.get_id()).order_by(GameStats.last_played.desc()).all()
+    favorites = Favorites.query.filter_by(user_id=current_user.get_id()).order_by(Favorites.added_at.desc()).all()
+    return render_template('profile_user.html', menu=MainMenu.query.all(), title=f'Профиль {user.name}', user=user,stats=stats,favorites=favorites)
 
 @app.route('/ava/<int:user_id>')
 @login_required
@@ -524,4 +618,17 @@ def ava(user_id):
     return ''
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)
+    with app.app_context():
+        #db.create_all()
+        result_users = clear_inactive_users()
+        result_tokens = clear_inactive_tokens()
+        logging.info(f'Initial cleanup: {result_users,result_tokens}')
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(clear_inactive_tokens,'interval', hours=1, id='clear_inactive_tokens')
+    scheduler.add_job(clear_inactive_users, 'interval', days=1, id='clear_inactive_users')
+    scheduler.start()
+    try:
+        app.run(host='0.0.0.0', port=5001, debug=True, threaded=True)
+        # app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()

@@ -15,22 +15,21 @@
     <div class="game-frame-container">
         {% if game.game_type == 'link' %}
             <iframe src="{{ game.link }}" id="game-frame" allowtransparency="true" class="game-frame" allow="fullscreen"></iframe>
-        <div class="game-controls">
-            <a id="fullscreen-btn" >
-             <img src="{{ url_for('static', filename='images/fullscreen-button.png') }}" alt="Fullscreen" class="fullscreen-icon">
-            </a>
-        </div>
+            <div class="game-controls">
+                <a id="fullscreen-btn">
+                    <img src="{{ url_for('static', filename='images/fullscreen-button.png') }}" alt="Fullscreen" class="fullscreen-icon">
+                </a>
+            </div>
         {% elif game.game_type == 'pygame' %}
             <iframe src="{{ url_for('pygame') }}" id="game-frame" allowtransparency="true" class="game-frame" allow="fullscreen"></iframe>
-        <div class="game-controls">
-            <a id="fullscreen-btn" >
-             <img src="{{ url_for('static', filename='images/fullscreen-button.png') }}" alt="Fullscreen" class="fullscreen-icon">
-            </a>
-        </div>
+            <div class="game-controls">
+                <a id="fullscreen-btn">
+                    <img src="{{ url_for('static', filename='images/fullscreen-button.png') }}" alt="Fullscreen" class="fullscreen-icon">
+                </a>
+            </div>
         {% elif game.game_type == 'unity' %}
             <iframe src="{{ url_for('static', filename='games/' + game.link + '/index.html') }}" id="game-frame" allowtransparency="true" class="game-frame" allow="fullscreen"></iframe>
         {% endif %}
-
     </div>
 
     <div class="game-meta">
@@ -49,12 +48,18 @@
         {% if game.genre %}
             <p class="game-genre"><strong>Жанр:</strong> {{ game.genre }}</p>
         {% endif %}
+        <button class="favorite-btn" data-game-id="{{ game.id }}" data-is-favorite="{{ 'true' if is_favorite else 'false' }}">
+            {% if is_favorite %}
+                <span class="favorite-icon">★</span> Удалить из избранного
+            {% else %}
+                <span class="favorite-icon">☆</span> Добавить в избранное
+            {% endif %}
+        </button>
         {% if game.installer %}
             <a href="{{ url_for('download_installer', game_id=game.id) }}" class="btn download-btn">💾Скачать</a>
         {% endif %}
     </div>
 </div>
-
 
 <div class="game-info-container">
     <div id="game-info" class="game-info">
@@ -74,17 +79,41 @@
     <div id="comments-container"></div>
 </div>
 
-<script src="{{url_for('static', filename='js/fullscreen.js')}}" rel="javascript"></script>
-<script src="{{url_for('static', filename='js/comments.js')}}" rel="javascript"></script>
-<script>
-    document.addEventListener("DOMContentLoaded", function () {
-        document.cookie = "game_path={{ game.link }}; path=/; SameSite=Lax";
-        console.log("game-layout:", document.querySelector('.game-layout'));
-    });
-</script>
 <script>
     window.entityId = {{ game.id }};
     window.entityType = "game";
 </script>
+<script src="{{url_for('static', filename='js/fullscreen.js')}}" rel="javascript"></script>
+<script src="{{url_for('static', filename='js/favorites.js')}}" rel="javascript"></script>
+<script src="{{ url_for('static', filename='js/comments.js') }}" rel="javascript"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        document.cookie = "game_path={{ game.link }}; path=/; SameSite=Lax";
+        console.log("game-layout:", document.querySelector('.game-layout'));
 
+        // Отслеживание времени игры
+        let startTime = Date.now();
+        const gameId = {{ game.id }};
+
+        function sendTimeSpent() {
+            const timeSpent = Math.floor((Date.now() - startTime) / 1000); // Время в секундах
+            fetch(`/game/${gameId}/track_time`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ time_spent: timeSpent }),
+            })
+            .then(response => response.json())
+            .then(data => console.log(data.message))
+            .catch(error => console.error('Ошибка отправки времени:', error));
+        }
+
+        // Отправка времени при закрытии страницы
+        window.addEventListener('beforeunload', sendTimeSpent);
+
+        // Отправка времени каждые 60 секунд
+        setInterval(sendTimeSpent, 60000);
+    });
+</script>
 {% endblock %}

@@ -34,10 +34,11 @@ class Posts(db.Model):
     url = db.Column(db.Text, nullable=False)
     cover = db.Column(db.LargeBinary, nullable=True)
     text = db.Column(db.Text, nullable=False)
-    time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
+    time = db.Column(db.Integer, nullable=False, default=lambda: int(datetime.utcnow().timestamp()))
+    comments = db.relationship('Comments',back_populates='post',cascade="all, delete",passive_deletes=True)
 
     def __repr__(self):
-        return f'<Posts {self.id}, {self.title}>'
+        return f'<Post {self.id}, {self.title}>'
 
 class Users(db.Model):
     __tablename__ = 'users'
@@ -49,10 +50,14 @@ class Users(db.Model):
     avatar = db.Column(db.LargeBinary, default=None)
     is_active = db.Column(db.Boolean,nullable=False,default=False)
     role = db.Column(db.Text, nullable=False, default='user')
-    time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
-
+    time = db.Column(db.Integer, nullable=False, default=lambda: int(datetime.utcnow().timestamp()))
+    comments = db.relationship('Comments',back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
+    comment_likes = db.relationship('CommentLikes',back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
+    game_stats = db.relationship('GameStats',back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
+    favorites = db.relationship('Favorites',back_populates='user', cascade='all, delete-orphan', passive_deletes=True)
+    tokens = db.relationship('Token',back_populates='user',cascade='all, delete-orphan',passive_deletes=True)
     def __repr__(self):
-        return f'<Users {self.id}, {self.email}, {self.avatar}>'
+        return f'<User {self.id}, {self.email}, {self.avatar}>'
 
     @staticmethod
     def updateUserAvatar(avatar, user_id):
@@ -89,10 +94,25 @@ class Games(db.Model):
     genre = db.Column(db.Text, nullable=True)
     installer = db.Column(db.Text, nullable=True)
     game_type = db.Column(db.String(20), nullable=False, default='link')
-    time = db.Column(db.Integer, nullable=False, default=datetime.utcnow)
+    time = db.Column(db.Integer, nullable=False, default=lambda: int(datetime.utcnow().timestamp()))
+    favorites = db.relationship('Favorites',back_populates='game',cascade="all, delete-orphan",passive_deletes=True)
+    stats = db.relationship('GameStats',back_populates='game',cascade="all, delete-orphan",passive_deletes=True)
+    comments = db.relationship('Comments',back_populates='game',cascade="all, delete-orphan",passive_deletes=True)
 
     def __repr__(self):
-        return f'<Games {self.id}, {self.title}>'
+        return f'<Game {self.id}, {self.title}>'
+
+    @staticmethod
+    def clean_orphaned_records():
+        try:
+            favorites_deleted = Favorites.query.filter(~Favorites.game_id.in_(db.session.query(Games.id))).delete()
+            stats_deleted = GameStats.query.filter(~GameStats.game_id.in_(db.session.query(Games.id))).delete()
+            db.session.commit()
+            return {"favorites_deleted": favorites_deleted, "stats_deleted": stats_deleted}
+        except Exception as e:
+            db.session.rollback()
+            print(f"Ошибка очистки осиротевших записей: {e}")
+            return {"error": str(e)}
 
 class Comments(db.Model):
     __tablename__ = 'comments'
@@ -103,15 +123,17 @@ class Comments(db.Model):
     parent_id = db.Column(db.Integer, db.ForeignKey('comments.id', ondelete='CASCADE'), nullable=True)
 
     text = db.Column(db.Text, nullable=False)
-    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.utcnow())
     likes = db.Column(db.Integer, default=0)
 
-    user = db.relationship('Users', passive_deletes=True)
-    game = db.relationship('Games', backref=db.backref('replies', lazy=True, cascade='all, delete'))
-    post = db.relationship('Posts', backref=db.backref('replies', lazy=True, cascade='all, delete'))
-    parent = db.relationship('Comments', remote_side = [id],  backref=db.backref('replies', lazy=True, cascade='all, delete'))
+    user = db.relationship('Users', back_populates='comments', passive_deletes=True)
+    game = db.relationship('Games', back_populates='comments')
+    post = db.relationship('Posts', back_populates='comments')
+    parent = db.relationship('Comments', remote_side=[id],
+                             backref=db.backref('replies', lazy=True, cascade="all, delete"))
+    comment_likes = db.relationship('CommentLikes', back_populates='comment', cascade="all, delete")
     def __repr__(self):
-        return f'<Comments {self.id}, User {self.user_id}, Game {self.game_id}'
+        return f'<Comment {self.id}, User {self.user_id}, Game {self.game_id}, Post {self.post_id}'
 
 class CommentLikes(db.Model):
     __tablename__ = 'comment_likes'
@@ -119,11 +141,11 @@ class CommentLikes(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
     comment_id = db.Column(db.Integer, db.ForeignKey('comments.id', ondelete='CASCADE'), nullable=False)
 
-    user = db.relationship('Users', passive_deletes=True)
-    comment = db.relationship('Comments', backref=db.backref('comment_likes', lazy=True))
+    user = db.relationship('Users',back_populates='comment_likes', passive_deletes=True)
+    comment = db.relationship('Comments',back_populates='comment_likes',passive_deletes=True)
 
     def __repr__(self):
-        return f'<Commentlikes {self.id}, User {self.user_id}, Comment {self.comment_id}'
+        return f'<CommentLike {self.id}, User {self.user_id}, Comment {self.comment_id}'
 
 class Token(db.Model):
     __tablename__ = 'tokens'
@@ -133,7 +155,32 @@ class Token(db.Model):
     type = db.Column(db.String(20), nullable=False)  # "email_confirmation" или "password_reset"
     expires_at = db.Column(db.DateTime, nullable=False)
 
-    user = db.relationship('Users', backref=db.backref('tokens', lazy=True, cascade="all, delete"))
+    user = db.relationship('Users',back_populates='tokens')
 
     def __repr__(self):
         return f"<Token {self.id}, User {self.user_id}, Type {self.type}>"
+
+
+class Favorites(db.Model):
+    __tablename__ = 'favorites'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('games.id', ondelete='CASCADE'), nullable=False)
+    added_at = db.Column(db.DateTime, default=lambda: int(datetime.utcnow().timestamp()))
+    user = db.relationship('Users',back_populates='favorites')
+    game = db.relationship('Games',back_populates='favorites')
+
+    def __repr__(self):
+        return f"<Favorite {self.id}, User {self.user_id}, Game {self.game_id}>"
+
+class GameStats(db.Model):
+    __tablename__ = 'game_stats'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='CASCADE'), nullable=False)
+    game_id = db.Column(db.Integer, db.ForeignKey('games.id', ondelete='CASCADE'), nullable=False)
+    time_spent = db.Column(db.Integer, nullable=False, default=0)  # Время в секундах
+    last_played = db.Column(db.DateTime, default=datetime.utcnow)
+    user = db.relationship('Users',back_populates='game_stats')
+    game = db.relationship('Games',back_populates='stats')
+    def __repr__(self):
+        return f"<GameStat {self.id}, User {self.user_id}, Game {self.game_id}, Time {self.time_spent}>"

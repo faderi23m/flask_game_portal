@@ -1,4 +1,4 @@
-import time,re,zipfile,os,shutil,hmac,hashlib
+import time,re,zipfile,os,shutil,hmac,hashlib,base64
 from flask import Blueprint, render_template, url_for, redirect, session, request, flash, g
 from werkzeug.security import check_password_hash, generate_password_hash
 from db import *
@@ -6,6 +6,8 @@ from datetime import datetime,timedelta
 from sqlalchemy import func, asc, desc
 from werkzeug.utils import secure_filename
 from git import Repo
+from config import *
+from flask_mail import Message
 
 hash = '/test'
 
@@ -20,39 +22,6 @@ menu = [{'url' : '.index', 'title' : 'Панель'},
         {'url' : 'index', 'title' : '/'}]
 
 SECRET_KEY = "6LcPresqAAAAAAz89KkedGqJEDNee9IAcwd5Q0d8"
-
-GENRES = (
-    '🔫Экшн',
-    '🌏Приключения',
-    '🧙‍♂️RPG',
-    '⚽Спорт',
-    '🗿Головоломка',
-    '🏃‍♂️Платформер',
-    '🚗Гонки',
-    '👊Файтинг',
-    '🕵️‍♂️Детектив',
-    '🧟‍♂️Хоррор',
-    '🎮Аркада',
-    '🎲Настольная',
-    '🎵Музыкальная',
-    '✈️Авиасимулятор',
-    '🪖Тактика',
-    '🃏Карточная',
-    '🏰Tower Defense',
-    '🌌Космический симулятор',
-    '🐉Фэнтези',
-    '🤖Научная фантастика',
-    '🏹Стелс',
-    '👨‍🚀Выживание',
-    '🧩Пазл',
-    '🛠️Крафтинг',
-    '👑Королевская битва',
-    '🎯Шутер от первого лица',
-    '🧑‍🤝‍🧑Мультиплеер',
-    '🕹️Ретро',
-    '🏞️Открытый мир',
-    'Другое'
-)
 
 def login_admin():
     session['admin_logged'] = 1
@@ -307,6 +276,7 @@ def addmenu():
 
 @admin.route('/add_game', methods=['POST', 'GET'])
 def add_game():
+    from app import mail
     if not isLogged():
         return redirect(url_for('.login'))
     if request.method == 'POST':
@@ -408,6 +378,27 @@ def add_game():
                 db.session.add(new_game)
                 db.session.commit()
                 flash('Игра успешно добавлена', 'success')
+                # Отправка уведомлений всем зарегистрированным пользователям
+                users = Users.query.filter_by(is_active=True).all()
+                game_url = url_for('game', game_id=new_game.id, _external=True)
+                cover_b64 = base64.b64encode(cover_data).decode('utf-8')
+                for user in users:
+                    msg = Message(
+                        subject=f"Новая игра: {title}",
+                        recipients=[user.email]
+                    )
+                    msg.html = render_template(
+                        'email/game_notifaction.html',
+                        game_title=title,
+                        game_description=description[:200] + ('...' if len(description) > 200 else ''),
+                        game_url=game_url,
+                        cover_b64=cover_b64,
+                        genre=genre
+                    )
+                    try:
+                        mail.send(msg)
+                    except Exception as e:
+                        print(f"Ошибка отправки письма пользователю {user.email}: {str(e)}")
                 return redirect(url_for('.listgames'))
             except Exception as e:
                 db.session.rollback()
@@ -416,6 +407,7 @@ def add_game():
 
 @admin.route('/add_post', methods=['POST', 'GET'])
 def add_post():
+    from app import mail
     if not isLogged():
         return redirect(url_for('.login'))
     if request.method == 'POST':
@@ -442,6 +434,26 @@ def add_post():
                 db.session.add(new_post)
                 db.session.commit()
                 flash('Пост успешно добавлен', 'success')
+                # Отправка уведомлений всем зарегистрированным пользователям
+                users = Users.query.filter_by(is_active=True).all()
+                post_url = url_for('view_post', post_id=new_post.id, _external=True)
+                cover_b64 = base64.b64encode(cover_data).decode('utf-8')
+                for user in users:
+                    msg = Message(
+                        subject=f"Новый пост: {title}",
+                        recipients=[user.email]
+                    )
+                    msg.html = render_template(
+                        'email/post_notifation.html',
+                        post_title=title,
+                        post_text=text[:200] + ('...' if len(text) > 200 else ''),
+                        post_url=post_url,
+                        cover_b64=cover_b64
+                    )
+                    try:
+                        mail.send(msg)
+                    except Exception as e:
+                        flash(f"Ошибка отправки письма пользователю {user.email}: {str(e)}", 'error')
                 return redirect(url_for('.listpubs'))
             except Exception as e:
                 db.session.rollback()
@@ -455,6 +467,10 @@ def deleteuser(user_id):
     try:
         user = Users.query.get(user_id)
         if user:
+            Comments.query.filter_by(user_id=user_id).delete()
+            CommentLikes.query.filter_by(user_id=user_id).delete()
+            Favorites.query.filter_by(user_id=user_id).delete()
+            GameStats.query.filter_by(user_id=user_id).delete()
             db.session.delete(user)
             db.session.commit()
             flash('Пользователь удален','success')
@@ -473,6 +489,7 @@ def deletepost(post_id):
     try:
         post = Posts.query.get(post_id)
         if post:
+            Comments.query.filter_by(post_id=post_id).delete()
             db.session.delete(post)
             db.session.commit()
             flash('Пост удален','success')
@@ -483,7 +500,6 @@ def deletepost(post_id):
         print(f'Ошибка удаления поста {e}')
         flash(f'Ошибка удаления поста {e}', 'error')
     return redirect(url_for('.listpubs'))
-
 
 @admin.route('/delete_game/<int:game_id>', methods=["POST", "GET"])
 def deletegame(game_id):
@@ -500,6 +516,9 @@ def deletegame(game_id):
                     flash(f'Папка с игрой {game_folder} удалена', 'success')
                 else:
                     flash(f'Папка с игрой {game_folder} не найдена', 'error')
+            Comments.query.filter_by(game_id=game_id).delete()
+            Favorites.query.filter_by(game_id=game_id).delete()
+            GameStats.query.filter_by(game_id=game_id).delete()
             db.session.delete(game)
             db.session.commit()
             flash('Игра удалена','success')
@@ -528,24 +547,6 @@ def deletemenu(menu_id):
         print(f'Ошибка удаления игры {e}')
         flash(f'Ошибка удаления игры {e}', 'error')
     return redirect(url_for('.listmenu'))
-
-@admin.route('/deletecomment/<int:comment_id>')
-def deletecomment(comment_id):
-    if not isLogged():
-        return redirect(url_for('.login'))
-    try:
-        comment = Comments.query.filter_by(comment_id=comment_id)
-        if comment:
-            db.session.delete(comment)
-            db.session.commit()
-            flash('Коментарий удален', 'success')
-        else:
-            flash('Ошибка получения коментария', 'error')
-    except Exception as e:
-        db.session.rollback()
-        flash(f'Ошибка удаления коментария {e}', 'error')
-        print('Ошибка удаления коментария')
-    return redirect(url_for('.listcomments'))
 
 @admin.route('/edit-menu/<int:menu_id>', methods=['POST','GET'])
 def editmenu(menu_id):
